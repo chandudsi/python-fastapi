@@ -1,8 +1,0 @@
-{
-    "APPLICATION_NAME": "neo_tms",
-    "ENVIRONMENT": "",
-    "CATEGORIES": "triggers,publishers,process,events,transformations,codmap,enrichers,authorisations,publisher_config,receiver_publishers,business_identifiers",
-    "USE_CACHING": true,
-    "LOCAL_FILES_DIRECTORY": "../../config_repo",
-    "REALM": "neo"
-}

@@ -1,0 +1,25 @@
+---
+- sourceModel: warehousingOutboundNotification
+  targetModel: update_stop_planning_status
+  modelMapping:
+    segmentListMapping:
+      - targetSegment: payload
+        fieldVariableMapping:
+          - variableName: stop_planning_status_enum_val
+            operation:
+              - customFunction:
+                  functionName: map_load_to_stop_planning_status_enum_val
+                  fields: [load]
+
+        segmentListMapping:
+          - targetSegment: stopUpdateData
+            sourceSegment: warehousingOutboundNotification.shipment
+            fieldMapping:
+              - targetField: systemLoadID
+                sourceField: shipmentTransportationInformation.transportLoadId
+              - targetField: shippingLocationCode
+                sourceField: shipFrom.primaryId
+              - targetField: stopPlanningStatusEnumVal
+                sourceField: global_variable.stop_planning_status_enum_val
+              - targetField: IgnoreReferenceNumbersFlag
+                default: 'true'

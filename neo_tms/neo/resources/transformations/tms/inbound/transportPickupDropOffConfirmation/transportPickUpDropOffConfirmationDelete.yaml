@@ -1,0 +1,17 @@
+---
+- sourceModel: transportPickUpDropOffConfirmation
+  targetModel: delete_transportPickUpDropOffConfirmation
+  sourceCondition:
+    customFunction:
+      functionName: check_document_action_code_del
+      functionArgs: transportPickUpDropOffConfirmation.documentActionCode
+  modelMapping:
+    segmentListMapping:
+      - targetSegment: stopDockCommitment
+        fieldMapping:
+          - targetField: systemDockCommitmentID
+            condition:
+              function:
+                functionName: not_blank
+                fields: transportPickUpDropOffConfirmation.transportPickUpDropOffConfirmationId
+            sourceField: transportPickUpDropOffConfirmation.transportPickUpDropOffConfirmationId

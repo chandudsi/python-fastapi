@@ -1,0 +1,326 @@
+enrichers:
+# Interoperability - Enrichment - START
+  item:
+    - function: post_rest_api_call
+      targetEnrichment: itemMaster
+      enricherOptions:
+        enrichment_function_name: get_itemMasterDetails
+        api_response_field: "data"
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/commodity/v1/itemMasters/search"
+      trigger:
+      triggerOptions:
+
+    - function: post_rest_api_call
+      targetEnrichment: itemPackageLevel
+      enricherOptions:
+        enrichment_function_name: get_itemPackageLevel
+        api_response_field: "data"
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/commodity/v1/itemPackageLevels/search"
+      trigger:
+      triggerOptions:
+
+
+
+    - customFunction: get_updated_message_post_enrichment_call
+      targetEnrichment: itemMaster_enrichment
+      enricherOptions:
+      trigger:
+      triggerOptions:
+
+  orderRelease:
+    - customFunction: validate_orderRelease_inbound_message
+      targetEnrichment:
+        enricherOptions:
+
+    - function: post_rest_api_call
+      targetEnrichment: itemMaster
+      enricherOptions:
+        api_response_field: "data"
+        enrichment_function_name: get_item_master_enrichment_request_body
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/commodity/v1/itemMasters/search"
+        
+    - function: post_rest_api_call
+      targetEnrichment: shipmentEntryType
+      enricherOptions:
+        api_response_field: "data"
+        enrichment_function_name: get_shipment_entry_type_enrichment_request_body
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/entitysetup/v1/shipmentEntryTypes/search"
+
+    - function: post_rest_api_call
+      targetEnrichment: shippingLocation
+      enricherOptions:
+        api_response_field: "data"
+        enrichment_function_name: shipping_location_type_enrichment_call
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/location/v1/shippingLocations/search"
+
+    - function: post_rest_api_call
+      targetEnrichment: customer
+      enricherOptions:
+        api_response_field: "data"
+        enrichment_function_name: get_customer_type_enrichment_request_body
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/entitysetup/v1/customers/search"
+
+    - function: post_rest_api_call
+      targetEnrichment: shipment
+      enricherOptions:
+        api_response_field: "data"
+        enrichment_function_name: get_shipment_enrichment_request_body
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/shipment/v1/shipments/search"
+
+    - customFunction: get_updated_message_post_enrichment_call
+      targetEnrichment:
+        enricherOptions:
+
+# WON - Enrichment - START
+
+  warehousingOutboundNotification:
+    - function: post_rest_api_call
+      targetEnrichment: shipment
+      enricherOptions:
+        enrichment_function_name: get_shipment_type_enrichment_api_request_body_for_WON
+        api_response_field: "data"
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/shipment/v1/shipments/search"
+
+    - function: post_rest_api_call
+      targetEnrichment: load
+      enricherOptions:
+        enrichment_function_name: get_load_type_enrichment_api_request_body_for_WON
+        api_response_field: "data"
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/load/v1/loads/search"
+
+    # Enrich the original message with enriched data
+    - customFunction: form_won_enriched_data
+      targetEnrichment: enriched_payload
+      enricherOptions:
+
+# WON - Enrichment - END
+
+  despatchAdvice:
+
+    # Enrich the original message with enriched data
+    - customFunction: validate_despatch_advice_flow
+    - function: post_rest_api_call
+      targetEnrichment: shipment
+      enricherOptions:
+        api_response_field: "data"
+        enrichment_function_name: get_shipment_enrichment_api_call_da
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/shipment/v1/shipments/search"
+
+    - function: post_rest_api_call
+      targetEnrichment: load
+      enricherOptions:
+        api_response_field: "data"
+        enrichment_function_name: load_type_enrichment_payload_da
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/load/v1/loads/search"
+
+    - function: post_rest_api_call
+      targetEnrichment: shippingLocation
+      enricherOptions:
+        api_response_field: "data"
+        enrichment_function_name: shipping_location_type_enrichment_call_da
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/location/v1/shippingLocations/search"
+
+    # Enrich the original message with enriched data
+    - customFunction: form_despatch_advice_data
+      targetEnrichment:
+        enricherOptions:
+
+    - customFunction: check_load_status_tm
+      targetEnrichment:
+        enricherOptions:
+
+    - customFunction: check_zero_qty_shipment_exist
+      targetEnrichment:
+        enricherOptions:
+
+    - customFunction: validate_service_and_carrier
+      targetEnrichment: enriched_payload
+
+    - customFunction: despatch_advice_preproces_translator
+      targetEnrichment: pre_processed_da
+
+#RA entity enrichment start
+  receivingAdvice:
+    - function: post_rest_api_call
+      targetEnrichment: shipment
+      enricherOptions:
+        enrichment_function_name: shipping_location_type_enrichment_call
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/location/v1/shippingLocations/search"
+
+    - function: post_rest_api_call
+      targetEnrichment: load
+      enricherOptions:
+        enrichment_function_name: load_type_enrichment_payload
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/load/v1/loads/search"
+
+    # Enrich the original message with enriched data
+    - customFunction: get_updated_message_post_enrichment_call
+      targetEnrichment:
+        enricherOptions:
+
+#TM entities Enrichment START
+
+  transportLoad:
+    - function: post_rest_api_call
+      targetEnrichment: loadType
+      enricherOptions:
+        api_response_field: "data"
+        enrichment_function_name: get_load_type_enrichment_payload
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/load/v1/loads/search"
+
+    - function: post_rest_api_call
+      targetEnrichment: dockType
+      enricherOptions:
+        api_response_field: "data"
+        enrichment_function_name: get_dock_type_enrichment_payload
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/location/v1/docks/search"
+
+    - function: post_rest_api_call
+      targetEnrichment: masterServiceType
+      enricherOptions:
+        api_response_field: "data"
+        enrichment_function_name: master_service_type
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/tariff/v1/masterServices/getDetails"
+
+    - customFunction: form_transport_load_enriched_data
+      targetEnrichment: enriched_payload
+      enricherOptions:
+
+  transportPickUpDropOffConfirmation: # Entity name
+    - customFunction: validate_transportPickupDropoffConfirmation_tms_payload
+    - function: post_rest_api_call # enricher_name
+      targetEnrichment: tms_api_data
+      enricherOptions:
+        api_response_field: "data"
+        enrichment_function_name: "transportpickupdropoffConfirmation_tms_payload"
+        publisher: tms_api
+        publisherOptions:
+          path: "/tm/location/v1/docks/search"
+    - customFunction: form_transportPickUpDropOffConfirmation_tms_payload
+      targetEnrichment: enriched_payload
+
+  transportPickUpDropOffRequest:
+    - customFunction: validate_transportPickupDropoffRequest_tms_payload
+    - function: post_rest_api_call
+      targetEnrichment: tms_api_data
+      enricherOptions:
+        api_response_field: "data"
+        enrichment_function_name: transportpickupdropoffRequest_tms_payload
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/location/v1/docks/search"
+    - customFunction: form_transportPickupDropoffRequest_tms_payload
+      targetEnrichment: enriched_payload
+
+# Interoperability - Enrichment - END
+
+
+# WOI-Split Flow - Enrichment - START
+
+  warehousingOutboundInstruction:
+
+    - function: post_rest_api_call
+      targetEnrichment: load
+      enricherOptions:
+        api_response_field: "data"
+        enrichment_function_name: get_load_enrichment_api_call_woi
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/load/v1/loads/search"
+      trigger:
+      triggerOptions:
+
+    - function: post_rest_api_call
+      targetEnrichment: shipment
+      enricherOptions:
+        api_response_field: "data"
+        enrichment_function_name: get_shipment_enrichment_api_call_woi
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/shipment/v1/shipments/search"
+      trigger:
+      triggerOptions:
+
+    # Enrich the original message with enriched data
+    - customFunction: form_woi_data
+      targetEnrichment: enriched_payload
+
+
+# WOI-Split Flow- Enrichment - END
+
+
+# ApVoucher Flow - Enrichment - START
+
+  apVoucher:
+    - function: post_rest_api_call
+      targetEnrichment: apvoucher
+      enricherOptions:
+        api_response_field: "data"
+        enrichment_function_name: get_apvoucher_enrichment_api_call
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/financial/v1/apVouchers/search"
+      trigger:
+      triggerOptions:
+
+    # Enrich the original message with enriched data
+    - customFunction: form_apvoucher_tms_payload
+      targetEnrichment: enriched_payload
+
+
+# ApVoucher Flow- Enrichment - END
+
+# ArVoucher Flow - Enrichment - START
+
+  arVoucher:
+    - function: post_rest_api_call
+      targetEnrichment: arvoucher
+      enricherOptions:
+        api_response_field: "data"
+        enrichment_function_name: get_arvoucher_enrichment_api_call
+        publisher: "tms_api"
+        publisherOptions:
+          path: "/tm/financial/v1/arVouchers/search"
+      trigger:
+      triggerOptions:
+
+    # Enrich the original message with enriched data
+    - customFunction: form_arvoucher_tms_payload
+      targetEnrichment: enriched_payload
+
+
+# ArVoucher Flow- Enrichment - END

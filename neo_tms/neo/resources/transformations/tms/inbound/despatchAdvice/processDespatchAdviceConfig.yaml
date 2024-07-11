@@ -1,0 +1,400 @@
+# DA quantity update
+- sourceModel: despatchAdvice
+  targetModel: process_shipment_quantity
+  modelMapping:
+    fieldVariableMapping:
+      - variableName: lines_to_process
+        operations:
+          - customFunction:
+              functionName: get_lines_to_process
+              fields: [property: tms.uom.weight, property: tms.uom.volume]
+    segmentListMapping:
+      - targetSegment: payload
+        sourceSegment: global_variable.lines_to_process
+        condition:
+          - function:
+              functionName: is_equal
+              fields: [property: tms.DespatchAdvice.update.shipment.actual, constant: true]
+        fieldMapping:
+          - targetField: containerActionEnumVal
+            default: "AT_UPDATE"
+        segmentListMapping:
+          - targetSegment: container
+            sourceSegment: lineItems
+            condition:
+              - customFunction:
+                  functionName: is_lineItem_processable
+                  fields: [field: ext_shipmentContainerDocument, field: ext_shipmentToProcess, field: ext_shipmentOperationStatus, constant: S_CONFIRMED, field: documentActionCode, constant: DELETE]
+            fieldMapping:
+              - targetField: systemContainerID
+                sourceField: transactionalTradeItem.primaryId
+              - targetField: ignoreContainersFlag
+                default: false
+              - targetField: ignoreReferenceNumbersFlag
+                default: false
+              - targetField: quantity
+                condition:
+                  - function:
+                      functionName: is_equal
+                      fields: [property: tms.DespatchAdvice.override.planned.estimate, constant: true]
+                sourceField: ext_aggregatedQuantity
+              - targetField: quantity
+                condition:
+                  - function:
+                      functionName: is_not_equal
+                      fields: [property: tms.DespatchAdvice.override.planned.estimate, constant: true]
+                sourceField: ext_shipmentContainerQuantity
+              - targetField: ignoreShipmentItemsFlag
+                condition:
+                  - function:
+                      functionName: is_not_equal
+                      fields: [field: ext_shipmentMode, constant: ILD_SUMMARY_MANDATORY]
+                default: true
+              - targetField: ignoreWeightByFreightClassFlag
+                condition:
+                  - function:
+                      functionName: is_not_equal
+                      fields: [field: ext_shipmentMode, constant: ILD_SUMMARY_MANDATORY]
+                default: false
+            segmentMapping:
+              - targetSegment: containerShippingInformation
+                condition:
+                  - function:
+                      functionName: is_equal
+                      fields: [property: tms.DespatchAdvice.override.planned.estimate, constant: true]
+                fieldMapping:
+                  - targetField: volume
+                    sourceField: ext_containerUnitVolume
+                  - targetField: nominalWeight
+                    sourceField: ext_inputWeightValue
+            segmentListMapping:
+              - targetSegment: weightByFreightClass
+                sourceSegment: ext_shipmentContainerWeightByFreightClass
+                segmentListVariableMapping:
+                  - variableName: ext_inputWeightValue
+                    variableValue: ext_inputWeightValue
+                fieldMapping:
+                  - targetField: freightClassCode
+                    sourceField: freightClassCode
+                  - targetField: freightClassNominalWeight
+                    condition:
+                      - function:
+                          functionName: is_equal
+                          fields: [property: tms.DespatchAdvice.override.planned.estimate, constant: true]
+                    sourceField: global_variable.ext_inputWeightValue
+                  - targetField: freightClassNominalWeight
+                    condition:
+                      - function:
+                          functionName: is_not_equal
+                          fields: [property: tms.DespatchAdvice.override.planned.estimate, constant: true]
+                    sourceField: freightClassNominalWeight
+            injectPayload:
+              - customFunction:
+                  functionName: get_refereneNumberStr_segment
+                  fields: 
+                    - property: tms.DespatchAdvice.override.planned.estimate
+                    - constant: false
+                    - property: tms.DespatchAdvice.shipment.actual.quantity.param
+                    - constant: ReferenceNumber
+                    - constant: WM_DISP_QTY
+                    - field: ext_aggregatedQuantity
+                    - property: tms.DespatchAdvice.shipment.actual.volume.param
+                    - constant: ReferenceNumber
+                    - constant: WM_DISP_VOL
+                    - field: ext_aggShipLineVolume
+                    - property: tms.DespatchAdvice.shipment.actual.weight.param
+                    - constant: ReferenceNumber
+                    - constant: WM_DISP_WT
+                    - field: ext_aggShipLineWeight
+
+# Load Status Update.
+# Use Case:
+#    This Api will be fired for load status update for all load and will
+#    be updating the trailer details for all load based on the data coming in DA
+# input: Despatch Advice document along with
+#         the shipment, load, shippinglocation code enrichment data
+# output: Form Api call to update the load status for all the load which is coming as part of this DA.
+
+- sourceModel: despatchAdvice
+  targetModel: process_load_status_update
+  modelMapping:
+    segmentListMapping:
+    - targetSegment: payload
+      segmentListMapping:
+      - targetSegment: loadStatusUpdateData
+        segmentListVariableMapping:
+          - variableName: shipments
+            operation:
+              - customFunction:
+                  functionName: get_shipment_leg
+          - variableName: list_of_stop_sequence_number
+            operation:
+            - customFunction:
+                functionName: form_stop_look_up
+
+          - variableName: despatch_advice_with_srn
+            operation:
+              - customFunction:
+                  functionName: get_unique_load_despatch_advice
+        sourceSegment: global_variable.despatch_advice_with_srn
+        fieldVariableMapping:
+        - variableName: current_da
+          # keep track of the curr da Details
+          variableValue: current_payload
+        - variableName: loadDocument
+          operation:
+          - customFunction:
+              functionName: get_current_load
+              # get this with the current iteration
+              fields: despatchAdviceTransportInformation.transportLoadId
+        - variableName: inputArrivalDateTime
+          variableValue: despatchInformation.loadingDateTime
+        - variableName: shippingLocationCode
+          variableValue: shipFrom.primaryId
+        - variableName:  shippingLocationInformationDocument
+          operation:
+          - customFunction:
+              functionName: get_shipping_location_information_document
+              # get this with the current iteration
+              fields: global_variable.shippingLocationCode
+        - variableName:  locationOffset
+          variableValue: global_variable.shippingLocationInformationDocument.businessHours.timeZoneOffset
+        - variableName:  inputDepartureDateTime
+          variableValue: despatchInformation.actualShipDateTime
+        - variableName:  mbolValue
+          operation:
+          - customFunction:
+              functionName: get_mbol_value
+              # get this with the current iteration
+              fields: [global_variable.current_da, global_variable.loadDocument.systemLoadID]
+        - variableName:  tractorNum
+          operation:
+          - customFunction:
+              functionName: get_tractor_number
+              # get this with the current iteration
+              fields: global_variable.current_da
+        - variableName:  trailerNum
+          operation:
+          - customFunction:
+              functionName: get_trailer_number
+              # get this with the current iteration
+              fields: global_variable.current_da
+        fieldMapping:
+        - targetField: systemLoadID
+          sourceField: global_variable.loadDocument.systemLoadID
+        - targetField: IDsAreReferenceNumbersFlag
+          default: false
+        - targetField: tractorNumber
+          sourceField: global_variable.tractorNum
+        - targetField: trailerNumber
+          sourceField: global_variable.trailerNum
+        - targetField: masterBillOfLadingNumber
+          operations:
+            - customFunction:
+                functionName: get_mbol_number
+                # get this with the current iteration
+                fields: [field: global_variable.mbolValue, field: global_variable.loadDocument]
+
+        segmentListMapping:
+        - targetSegment: stopArrivalDepartureData
+          fieldMapping:
+          - targetField: stopSequenceNumber
+            operations:
+              - customFunction:
+                  functionName: get_stop_reference_number_from_lookup
+                  # get this with the current iteration
+                  fields: [field: global_variable.shippingLocationCode, field: global_variable.loadDocument.systemLoadID, field: global_variable.list_of_stop_sequence_number]
+          - targetField: stopTypeEnumVal
+            default: STR_PICKONLY
+          - targetField: arrivalDateTime
+            sourceField: global_variable.inputArrivalDateTime
+          - targetField: arrivalEventCode
+            default: DRVRCHKIN_
+          - targetField: departureDateTime
+            sourceField: global_variable.inputDepartureDateTime
+          - targetField: departureEventCode
+            default: DRVRCHKOUT_
+
+
+
+# Load Update.
+# Use Case:
+#    This Api will be fired for load  update for all load and will
+#    be updating the trailer details for all load based on the data coming in DA
+# input: Despatch Advice document along with
+#         the shipment, load, shippinglocation code enrichment data
+# output: Form Api call to update the load for all the load which is coming as part of this DA.
+
+- sourceModel: despatchAdvice
+  targetModel: process_load_update
+  modelMapping:
+    segmentListMapping:
+    - targetSegment: payload
+      segmentListMapping:
+      - targetSegment: loadUpdateData
+        segmentListVariableMapping:
+          - variableName: despatch_advice_with_srn
+            operation:
+              - customFunction:
+                  functionName: get_despatch_advice_with_srn
+        sourceSegment: global_variable.despatch_advice_with_srn
+        fieldVariableMapping:
+        - variableName: current_da
+          # keep track of the curr da Details
+          variableValue: current_payload
+        - variableName: loadDocument
+          operation:
+          - customFunction:
+              functionName: get_current_load
+              # get this with the current iteration
+              fields: despatchAdviceTransportInformation.transportLoadId
+
+        fieldMapping:
+        - targetField:  systemLoadID
+          sourceField: global_variable.loadDocument.systemLoadID
+        - targetField:  loadDescription
+          operations:
+            - customFunction:
+                functionName: get_load_description
+                # get this with the current iteration
+                fields: [field: global_variable.loadDocument, field: global_variable.current_da]
+        - targetField:  trailerLicenseNumber
+          operations:
+            - customFunction:
+                functionName: get_trailer_license_number
+                # get this with the current iteration
+                fields: [field: global_variable.current_da]
+        - targetField:  tractorLicenseNumber
+          operations:
+            - customFunction:
+                functionName: get_tractor_license_number
+                # get this with the current iteration
+                fields: [field: global_variable.current_da]
+        - targetField:  driverLicenseNumber
+          operations:
+            - customFunction:
+                functionName: get_driver_license_number
+                # get this with the current iteration
+                fields: [field: global_variable.current_da]
+
+# Reference Number Update.
+# Use Case:
+#    This Api will be fired for reference number update for all load coming in DA
+# input: Despatch Advice document along with
+#         the shipment, load, shippinglocation code enrichment data
+# output: Form Api call to update the reference number for all load/stop for all the load which is coming as part of this DA.
+
+- sourceModel: despatchAdvice
+  targetModel: process_reference_number_update
+  modelMapping:
+    segmentListMapping:
+    - targetSegment: payload
+      segmentListVariableMapping:
+      - variableName: unique_load_despact_advice
+        operation:
+          - customFunction:
+              functionName: get_unique_load_despatch_advice
+      sourceSegment: global_variable.unique_load_despact_advice
+      fieldVariableMapping:
+      - variableName: current_da
+        # keep track of the curr da Details
+        variableValue: current_payload
+      - variableName: loadDocument
+        operation:
+          - customFunction:
+              functionName: get_current_load
+              fields: despatchAdviceTransportInformation.transportLoadId
+      - variableName: shippingLocationCode
+        variableValue: shipFrom.primaryId
+      - variableName: loadReferenceNumberID
+        operation:
+          - customFunction:
+              functionName: get_load_reference_id
+              fields: global_variable.loadDocument
+      - variableName: stopStatus
+        operation:
+          - customFunction:
+              functionName: get_stop_status
+              fields: [field: global_variable.shippingLocationCode, constant: "-SHIPPED"]
+      - variableName: stopDocument
+        operation:
+          - customFunction:
+              functionName: get_stop_document
+              fields: [field: global_variable.loadDocument, field: global_variable.shippingLocationCode]
+      - variableName: loadStatus
+        operation:
+          - customFunction:
+              functionName: get_load_status
+              fields: [field: global_variable.loadDocument, field: global_variable.shippingLocationCode, field: global_variable.stopStatus]
+      - variableName: systemStopID
+        variableValue: global_variable.stopDocument.systemStopID
+      - variableName: stopReferenceNumberID
+        operation:
+          - customFunction:
+              functionName: get_stop_reference_number
+              fields: global_variable.stopDocument
+      - variableName: referenceNumberActionEnumVal
+        operation:
+          - customFunction:
+              functionName: get_tm_property
+              fields: [property: tms.refNumActionEnumVal.update]
+
+      segmentListMapping:
+        - targetSegment: referenceNumberUpdateData
+          condition:
+          - customFunction:
+              functionName: check_condition_for_load_ref_update
+              fields: [field: global_variable.referenceNumberActionEnumVal, field: global_variable.loadDocument.systemLoadID, field: global_variable.loadReferenceNumberID]
+          fieldMapping:
+          - targetField:  referenceNumberTypeCode
+            default: WM_WH_STS_
+          - targetField:  referenceNumberEntityKey
+            sourceField: global_variable.loadDocument.systemLoadID
+          - targetField:  referenceNumberCategoryEnumVal
+            default: RNC_LD_LEG
+          - targetField:  referenceNumber
+            sourceField: global_variable.loadStatus
+          injectPayload:
+            - customFunction:
+                functionName: get_reference_number_action_enum_val
+                # get this with the current iteration
+                fields: [field: global_variable.referenceNumberActionEnumVal, field: global_variable.loadReferenceNumberID]
+
+
+        - targetSegment: referenceNumberUpdateData
+          condition:
+            - customFunction:
+                functionName: check_condition_for_stop_ref_update
+                fields: [field: global_variable.referenceNumberActionEnumVal, field: global_variable.systemStopID, field: global_variable.stopReferenceNumberID ]
+          fieldMapping:
+          - targetField:  referenceNumberTypeCode
+            default: WM_SHP_STS
+          - targetField:  referenceNumberEntityKey
+            sourceField: global_variable.loadDocument.systemStopID
+          - targetField:  referenceNumberCategoryEnumVal
+            default: RNC_STOP
+          - targetField:  referenceNumber
+            sourceField: global_variable.stopStatus
+          injectPayload:
+            - customFunction:
+                functionName: get_reference_number_action_enum_val
+                # get this with the current iteration
+                fields: [field: global_variable.referenceNumberActionEnumVal, field: global_variable.stopReferenceNumberID]
+
+        - targetSegment: referenceNumberUpdateData
+          condition:
+            - customFunction:
+                functionName: check_condition_for_bol_ref_update
+                fields: [field: global_variable.stopDocument, field: global_variable.current_da]
+
+          fieldMapping:
+          - targetField:  referenceNumberTypeCode
+            default: OL
+          - targetField:  referenceNumberEntityKey
+            sourceField: global_variable.systemStopID
+          - targetField:  referenceNumberCategoryEnumVal
+            default: RNC_STOP
+          - targetField:  referenceNumber
+            sourceField: global_variable.current_da.dropOffStop.billOfLadingNumber.entityId
+          - targetField:  referenceNumberActionEnumVal
+            default: AT_ADD

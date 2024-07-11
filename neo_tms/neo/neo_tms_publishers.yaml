@@ -1,0 +1,64 @@
+---
+publishers:
+  tms_api:
+    publisher_type: api
+    type: api
+    protocol: https
+    disable_ssl_cert_verification: "true"
+    host: "localhost"
+    port: "443"
+    cache:
+      protocol: http
+      enabled: false
+      method_type: get
+      resource_path: /token
+      port: "8080"
+      ttl: "240"
+      host: "localhost"
+    headers:
+      Content-Type: application/json
+      # for enabling the identity context
+      # Identity-Context: "keyvault::{ENVIRONMENT}-{REALM}-tms-identity-context-secret"
+      Accept: application/json
+    authorisation:
+      # for enabling the identity context authorization should be disabled. enabled: false
+      enabled: true
+      auth_name: tms_oauth2
+
+  aeh_tms_wms_{warehouse_id}_publisher:
+    type: aeh
+    connection:
+      connection_string: keyvault::{ENVIRONMENT}-{REALM}-wma-{warehouse_id}-aeh-topic
+      event_hub_name: neo-wma-{warehouse_id}-evh
+
+
+# LTD Egress inbound AEH
+  aeh_tms_egress_publisher:
+    type: aeh
+    connection:
+      connection_string: "keyvault::{ENVIRONMENT}-{REALM}-egress-aeh-topic"
+      event_hub_name: "neo-ltd-egress" # Needs to be updated according to the implementation
+
+  # this is the blob where adapter stages the data for claim check while sending to LTD egress
+  egress_blob:
+    retries: 10
+    retry_sleep: 5
+    # Obtain this from LTD team.
+    connectionString: "keyvault::{ENVIRONMENT}-{REALM}-egress-blob-storage-connection"
+    # Obtain this from LTD team.
+    container: "ltd-egress-container"
+    # Obtain this from LTD team. LTD configuration which holds egress blob details
+    endpoint_label: "blob_batch_dms_2"
+
+  # this is the blob where adapter stages the data for claim check while sending to tracking service
+  tracking_blob:
+    retries: 10
+    retry_sleep: 5
+    connectionString: "keyvault::{ENVIRONMENT}-{REALM}-storage-connection"
+    container: "neo-iff-tracking"
+
+  interop_blob:
+    retries: 10
+    retry_sleep: 5
+    connectionString: "keyvault::{ENVIRONMENT}-{REALM}-storage-connection"
+    container: "neo-iff-interop"

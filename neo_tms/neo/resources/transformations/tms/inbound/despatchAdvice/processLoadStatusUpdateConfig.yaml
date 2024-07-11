@@ -1,0 +1,104 @@
+- sourceModel: despatchAdvice
+  targetModel: process_load_status_update
+  modelMapping:
+    segmentListMapping:
+    - targetSegment: payload
+      segmentListMapping:
+      - targetSegment: loadStatusUpdateData
+        segmentListVariableMapping:
+          - variableName: shipments
+            operation:
+              - customFunction:
+                  functionName: get_shipment_leg
+          - variableName: list_of_stop_sequence_number
+            operation:
+            - customFunction:
+                functionName: form_stop_look_up
+
+          - variableName: despatch_advice_with_srn
+            operation:
+              - customFunction:
+                  functionName: get_unique_load_despatch_advice
+        sourceSegment: global_variable.despatch_advice_with_srn
+        fieldVariableMapping:
+        - variableName: current_da
+          # keep track of the curr da Details
+          variableValue: current_payload
+        - variableName: loadDocument
+          operation:
+          - customFunction:
+              functionName: get_current_load
+              # get this with the current iteration
+              fields: despatchAdviceTransportInformation.transportLoadId
+        - variableName: inputArrivalDateTime
+          variableValue: despatchInformation.loadingDateTime
+        - variableName: shippingLocationCode
+          variableValue: shipFrom.primaryId
+          operation:
+          - customFunction:
+              functionName: get_shipping_location_code
+              # get this with the current iteration
+              fields: global_variable.shippingLocationCode
+        - variableName:  shippingLocationInformationDocument
+          operation:
+          - customFunction:
+              functionName: get_shipping_location_information_document
+              # get this with the current iteration
+              fields: global_variable.shippingLocationCode
+        - variableName:  locationOffset
+          variableValue: global_variable.shippingLocationInformationDocument.businessHours.timeZoneOffset
+        - variableName:  inputDepartureDateTime
+          variableValue: despatchInformation.actualShipDateTime
+        - variableName:  mbolValue
+          operation:
+          - customFunction:
+              functionName: get_mbol_value
+              # get this with the current iteration
+              fields: [global_variable.current_da, global_variable.loadDocument.systemLoadID]
+        - variableName:  tractorNum
+          operation:
+          - customFunction:
+              functionName: get_tractor_num
+              # get this with the current iteration
+              fields: global_variable.current_da
+        - variableName:  trailerNum
+          operation:
+          - customFunction:
+              functionName: get_trailer_num
+              # get this with the current iteration
+              fields: global_variable.current_da
+        fieldMapping:
+        - targetField: systemLoadID
+          sourceField: global_variable.loadDocument.systemLoadID
+        - targetField: IDsAreReferenceNumbersFlag
+          default: false
+        - targetField: tractorNumber
+          sourceField: global_variable.tractorNum
+        - targetField: trailerNumber
+          sourceField: global_variable.trailerNum
+        - targetField: masterBillOfLadingNumber
+          operations:
+            - customFunction:
+                functionName: get_mbol_number
+                # get this with the current iteration
+                fields: [field: global_variable.mbolValue, field: global_variable.loadDocument]
+
+        segmentListMapping:
+        - targetSegment: stopArrivalDepartureData
+          fieldMapping:
+          - targetField: stopSequenceNumber
+            operations:
+              - customFunction:
+                  functionName: get_data_from_lookup
+                  # get this with the current iteration
+                  fields: [field: global_variable.shippingLocationCode, field: global_variable.loadDocument.systemLoadID, field: global_variable.list_of_stop_sequence_number]
+          - targetField: stopTypeEnumVal
+            default: STR_PICKONLY
+          - targetField: arrivalDateTime
+            sourceField: global_variable.inputArrivalDateTime
+          - targetField: arrivalEventCode
+            default: DRVRCHKIN_
+          - targetField: departureDateTime
+            sourceField: global_variable.inputDepartureDateTime
+          - targetField: departureEventCode
+            default: DRVRCHKOUT_

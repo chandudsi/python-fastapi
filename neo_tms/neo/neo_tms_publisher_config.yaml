@@ -1,0 +1,293 @@
+publisher_config:
+  wma-{warehouse_id}-endpoint:
+    publisher: "aeh_tms_wms_{warehouse_id}_publisher"
+    app_name: "WMA-{warehouse_id}"
+    publisherOptions:
+      message:
+        batch_size: -1
+        message_format: "json"
+        message_type: "BYDM"
+      compression:
+        threshold: 500 # size in kb
+        compression_type: "gz"
+      claim_check:
+        threshold: 500   # size in kb, if claim_check not needed set it to "NONE"
+        endpointType: "blob"
+        endpointName: "interop_blob"
+        path: "interop\\{realm}\\{parentId}"
+
+  process_shipment_quantity:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/shipment/v1/containers/maintain"
+      message:
+        batch_size: 1
+        message_format: "json"
+        message_type: "api"
+
+  process_shipment_update:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/shipment/v1/containers/maintain"
+      message:
+        batch_size: -1
+        message_format: "json"
+        message_type: "api"
+
+  process_load_status_update:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/load/v1/loads/updateStatus"
+      message:
+        batch_size: 1
+        message_format: "json"
+        message_type: "api"
+
+  process_load_update:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/load/v1/loads/update"
+      message:
+        batch_size: 1
+        message_format: "json"
+        message_type: "api"
+
+  process_reference_number_update:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/referenceNumber/v1/referenceNumbers/maintain"
+      message:
+        batch_size: 1
+        message_format: "json"
+        message_type: "api"
+  
+  process_shipment_container_remove:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/shipment/v1/containers/maintain"
+      message:
+        batch_size: 1
+        message_format: "json"
+        message_type: "api"
+
+  process_remove_shipment_from_load:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/shipment/v1/shipmentLegs/removeFromPlannedLoad"
+      message:
+        batch_size: -1
+        message_format: "json"
+        message_type: "api"
+
+  process_remove_shipment_from_planned_load:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/shipment/v1/shipmentLegs/removeFromPlannedLoad"
+      message:
+        batch_size: -1
+        message_format: "json"
+        message_type: "api"
+
+  process_add_shipment_to_planned_load:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/shipment/v1/shipmentLegs/assignToPlannedLoad"
+      message:
+        batch_size: -1
+        message_format: "json"
+        message_type: "api"
+
+  process_shipment_create:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/shipment/v1/shipments/create"
+      message:
+        batch_size: -1
+        message_format: "json"
+
+  process_full_shipment_update:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/shipment/v1/shipments/update"
+      message:
+        batch_size: -1
+        message_format: "json"
+
+  process_shipment_cancel:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/shipment/v1/shipments/cancel"
+      message:
+        batch_size: -1
+        message_format: "json"
+
+  process_shipment_delete:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/shipment/v1/shipments/delete"
+      message:
+        batch_size: -1
+        message_format: "json"
+
+# RA - Publishing - configuration - START
+
+  process_pod_status_update:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/shipment/v1/shipments/setProofOfDelivery"
+      message:
+        batch_size: 1
+        message_format: "json"
+        message_type: "api"
+
+# RA - Publishing - configuration - END
+        
+# WON - Publishing - configuration - START
+
+  process_reference_number_update_endpoint:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/referenceNumber/v1/referenceNumbers/maintain"
+      message:
+        batch_size: -1
+        message_format: "json"
+        message_type: "api"
+
+  update_stop_planning_status_endpoint:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/load/v1/stops/update"
+      message:
+        batch_size: -1
+        message_format: "json"
+        message_type: "api"
+
+  process_product_picked_item_update_endpoint:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/shipment/v1/containers/maintain"
+      message:
+        batch_size: 1
+        message_format: "json"
+        message_type: "api"
+
+# WON - Publishing - configuration - END
+
+  update_transportPickUpDropOffConfirmation_endpoint:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/load/v1/dockCommitments/update"
+      message:
+        batch_size: -1
+        message_format: "json"
+        message_type: "api"
+
+  delete_transportPickUpDropOffConfirmation_endpoint:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/load/v1/dockCommitments/delete"
+      message:
+        batch_size: -1
+        message_format: "json"
+        message_type: "api"
+
+# WON - Publishing - configuration - END
+
+# ITEM - Publishing - configuration - START
+  process_item_package_partial_change:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/commodity/v1/itemPackageLevels/update"
+      message:
+        batch_size: -1
+        message_format: "json"
+        message_type: "api"
+
+
+# WON - Publishing - configuration - END
+
+
+
+  shipment_container_update:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/shipment/v1/containers/maintain"
+      message:
+        batch_size: 1
+        message_format: "json"
+        message_type: "api"
+
+  process_shipment_container_delete:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/shipment/v1/containers/maintain"
+      message:
+        batch_size: 1
+        message_format: "json"
+        message_type: "api"
+
+
+
+
+  process_item_package_create:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/commodity/v1/itemPackageLevels/create"
+      message:
+        message_format: "json"
+        message_type: "api"
+
+  itemMaster_update:
+    publisher: "tms_api"
+    app_name: "TMS"
+    publisherOptions:
+      path: "/tm/commodity/v1/itemMasters/update"
+      message:
+        message_format: "json"
+        message_type: "api"
+
+# ITEM - Publishing - configuration - END
+
+
+# LTD egress
+  outbound_host_egress_aeh:
+    publisher: "aeh_tms_egress_publisher"
+    app_name: TMA-EGRESS
+    publisherOptions:
+      retry_message: 3
+      retry_delay: 3
+      message:
+        message_format: "json"
+      compression:
+        threshold: 500  # size in kb
+        compression_type: "lz4"
+      claim_check:
+        threshold: 500   # size in kb, if claim_check not needed set it to "NONE"
+        endpointType: "blob"
+        endpointName: "egress_blob"
+        path: "egress\\{realm}\\{parentId}"
+        notification_transform: "transformations/claim_check/outbound/neo_native_notification_format.yaml"
+

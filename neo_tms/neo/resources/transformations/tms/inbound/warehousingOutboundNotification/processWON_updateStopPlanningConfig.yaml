@@ -1,0 +1,96 @@
+---
+- sourceModel: warehousingOutboundNotification
+  targetModel: update_stop_planning_status
+  modelMapping:
+    segmentMapping:
+      - targetSegment: payload
+        fieldVariableMapping:
+          - variableName: input_payload
+            variableValue: current_payload
+          - variableName: WON_ShippingLocationCode
+            variableValue: global_variable.input_payload.event.warehousingOutboundNotification.shipment.shipFrom.primaryId
+          - variableName: transportLoadId
+            variableValue: global_variable.input_payload.event.warehousingOutboundNotification.shipment.shipmentTransportationInformation.transportLoadId
+          - variableName: statusCode
+            variableValue: global_variable.input_payload.event.warehousingOutboundNotification.shipment.warehousingOutboundStatusCode
+
+          - variableName: TMShipmentId
+            operation:
+              - customFunction:
+                  functionName: get_tms_shipment_ids
+                  fields: [ field: global_variable.input_payload.event.warehousingOutboundNotification.shipment.transactionalReference ]
+
+          - variableName: reference_number_shipment
+            operation:
+              - customFunction:
+                  functionName: update_shipment_ref_based_on_enriched_shipment
+                  fields: [ field: global_variable.input_payload.event.warehousingOutboundNotification.shipment,
+                      field: global_variable.input_payload.enrichment.shipment,
+                      field: global_variable.input_payload.event.warehousingOutboundNotification.shipment.warehousingOutboundStatusCode,
+                      field: global_variable.TMShipmentId,
+                      property: "tms.defaults.shipmentStatus.stockAllocated",
+                      property: "tms.defaults.shipmentStatus.productPicked",
+                      property: "tms.defaults.shipmentStatus.waveCancelled",
+                      property: "tms.refNumActionEnumVal.update"
+                  ]
+
+          - variableName: waved_shipments
+            operation:
+              - customFunction:
+                  functionName: get_number_of_waved_shipments
+                  fields: [ field: global_variable.input_payload.enrichment.load,
+                            field: global_variable.WON_ShippingLocationCode,
+                            field: global_variable.reference_number_shipment,
+                            field: global_variable.statusCode,
+                            field: global_variable.TMShipmentId,
+                            property: "tms.defaults.shipmentStatus.stockAllocated"
+                  ]
+          - variableName: picked_shipments
+            operation:
+              - customFunction:
+                  functionName: get_number_of_picked_shipments
+                  fields: [ field: global_variable.input_payload.enrichment.load,
+                            field: global_variable.WON_ShippingLocationCode,
+                            field: global_variable.reference_number_shipment,
+                            field: global_variable.statusCode,
+                            field: global_variable.TMShipmentId,
+                            property: "tms.defaults.shipmentStatus.productPicked"
+                  ]
+          - variableName: stop_planning_status
+            operation:
+              - customFunction:
+                  functionName: get_stop_planning_status
+                  fields: [ field: global_variable.input_payload.enrichment.load,
+                            field: global_variable.WON_ShippingLocationCode
+                  ]
+
+          - variableName: stop_planning_status_enum_val
+            operation:
+              - customFunction:
+                  functionName: get_stop_planning_status_enum_val
+                  fields: [ field: global_variable.statusCode,
+                            field: global_variable.waved_shipments,
+                            field: global_variable.picked_shipments,
+                            field: global_variable.stop_planning_status,
+                            property: "stopPlanningStatus.wave",
+                            property: "stopPlanningStatus.productPicked",
+                            property: "stopPlanningStatus.waveCancelled"
+                  ]
+
+
+        segmentListMapping:
+          - targetSegment: stopUpdateData
+            condition:
+              - customFunction:
+                  functionName: update_stop_planning_status_in_tms
+                  fields: [ field: global_variable.transportLoadId
+                  ]
+            fieldMapping:
+              - targetField: systemLoadID
+                sourceField: global_variable.transportLoadId
+              - targetField: shippingLocationCode
+                sourceField: global_variable.WON_ShippingLocationCode
+              - targetField: stopPlanningStatusEnumVal
+                sourceField: global_variable.stop_planning_status_enum_val
+              - targetField: ignoreReferenceNumbersFlag
+                default: 'true'

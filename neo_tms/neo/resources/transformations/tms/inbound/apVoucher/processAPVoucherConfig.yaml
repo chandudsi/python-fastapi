@@ -1,0 +1,321 @@
+---
+- sourceModel: apVoucher
+  targetModel: process_apvoucher_to_voucher
+  modelMapping:
+
+    fieldVariableMapping:
+      - variableName: payload
+        variableValue: current_payload
+
+    segmentMapping:
+      - targetSegment: header
+        fieldMapping:
+          - targetField: sender
+            default: "TMS.GLOBAL"
+          - targetField: receiver
+            default: []
+          - targetField: messageVersion
+            operations:
+              - customFunction:
+                  functionName: get_voucher_messageVersion
+                  fields: [property: 'voucher.bydm.messageVersion']
+            default: "BYDM 2021.2.0"
+
+          - targetField: messageId
+            operations:
+              - customFunction:
+                  functionName: generate_uuid
+          - targetField: type
+            default: "voucher"
+          - targetField: creationDateAndTime # add a custom function to get current system UTC date time
+            operations:
+              - customFunction:
+                  functionName: get_current_timestamp_iso8601
+    segmentListMapping:
+      - targetSegment: voucher
+      - fieldMapping:
+          - targetField: creationDateTime
+            operations:
+              - customFunction:
+                  functionName: get_current_timestamp_iso8601
+          - targetField: documentStatusCode
+            default: "ORIGINAL"
+          - targetField: documentActionCode
+            default: "ADD"
+          - targetField: voucherId
+            default: enrichment.apVoucherType.systemVoucherID
+          - targetField: voucherTypeCode
+            default: "AP"
+
+      - segmentMapping:
+            - targetSegment: voucherDetails
+              fieldMapping:
+                - targetField: originalVoucherId
+                  sourceField: enrichment.apVoucherType.initialVoucherID
+                - targetField: voucherSubType
+                  operations:
+                    - customFunction:
+                        functionName: getVoucherSubTypeFromClassId
+                        fields: [field: enrichment.apVoucherType.classID]
+                - targetField: effectiveFromDate
+                  sourceField: enrichment.apVoucherType.effectiveDate
+                - targetField: costCenter
+                  sourceField: enrichment.apVoucherType.costCenterCode
+                - targetField: profitCenter
+                  sourceField: enrichment.apVoucherType.profitCenterCode
+                - targetField: voucherStatusCode
+                  operations:
+                    - customFunction:
+                        functionName: getVoucherStatusCode
+                        fields: [ field: enrichment.apVoucherType.currentStatusEnumVal ]
+                #No Mapping for wasOnHold
+                #- targetField: wasOnHold
+                #  sourceField: enrichment.apVoucherType.initialVoucherID
+                - targetField: voucherLevelCode
+                  operations:
+                    - customFunction:
+                        functionName: getVoucherLevelCode
+                        fields: [ field: enrichment.apVoucherType.APVoucherLevelEnumVal ]
+
+            - segmentMapping:
+                - targetSegment: totalVoucherRatingAmount
+                  fieldMapping:
+                    - targetField: value
+                      operations:
+                        - customFunction:
+                            functionName: convertToFloat
+                            fields: [ field: enrichment.apVoucherType.totalVoucherRatingAmount ]
+
+                    - targetField: currencyCode
+                      sourceField: enrichment.apVoucherType.ratingCurrencyCode
+            - segmentMapping:
+                - targetSegment: totalVoucherPaymentAmount
+                  fieldMapping:
+                    - targetField: value
+                      operations:
+                        - customFunction:
+                            functionName: convertToFloat
+                            fields: [ field: enrichment.apVoucherType.totalVoucherPaymentAmount ]
+
+                    - targetField: currencyCode
+                      sourceField: enrichment.apVoucherType.currencyCode
+            - segmentMapping:
+                - targetSegment: totalTaxAmount
+                  fieldMapping:
+                    - targetField: value
+                      operations:
+                        - customFunction:
+                            functionName: convertToFloat
+                            fields: [ field: enrichment.apVoucherType.totalTaxAmount ]
+
+                    - targetField: currencyCode
+                      sourceField: enrichment.apVoucherType.currencyCode
+      - segmentMapping:
+            - targetSegment: internalReferenceId
+              fieldMapping:
+                - targetField: entityId
+                  sourceField: enrichment.apVoucherType.internalReferenceNumber
+                - targetField: typeCode
+                  sourceField: enrichment.apVoucherType.internalReferenceNumberTypeEnumVal
+      - fieldMapping:
+          - targetField: invoiceId
+            default: enrichment.apVoucherType.freightBillNumber
+          - targetField: originalInvoiceId
+            default: enrichment.apVoucherType.originalFreightBillNumber
+
+      - segmentListMapping:
+            - targetSegment: note
+              condition:
+                customFunction:
+                  functionName: check_condition_for_memo_isPrintable
+                  fields: [ field: enrichment.apVoucherType.memo.printableMemo ]
+
+            - fieldMapping:
+                - targetField: lineNumber
+                  sourceField: enrichment.apVoucherType.memo.id
+            - segmentMapping:
+                - targetSegment: text
+                  fieldMapping:
+                    - targetField: value
+                      sourceField: enrichment.apVoucherType.memo.printableMemo
+            - fieldMapping:
+                - targetField: type
+                  default: "Memo"
+                - targetField: isPrintable
+                  default: "true"
+
+
+            - targetSegment: note
+              condition:
+                customFunction:
+                  functionName: check_condition_for_memo_isNonPrintable
+                  fields: [ field: enrichment.apVoucherType.memo.nonPrintableMemo ]
+
+            - fieldMapping:
+                - targetField: lineNumber
+                  sourceField: enrichment.apVoucherType.memo.id
+            - segmentMapping:
+                - targetSegment: text
+                  fieldMapping:
+                    - targetField: value
+                      sourceField: enrichment.apVoucherType.memo.nonPrintableMemo
+            - fieldMapping:
+                - targetField: type
+                  default: "Memo"
+                - targetField: isPrintable
+                  default: "false"
+      - fieldMapping:
+          - targetField: organisationName
+            default: enrichment.apVoucherType.divisionCode
+          - targetField: departmentName
+            default: enrichment.apVoucherType.logisticsGroupCode
+      - segmentMapping:
+          - targetSegment: buyer
+            fieldMapping:
+              - targetField: primaryId
+                sourceField: enrichment.apVoucherType.customerCode
+      - segmentMapping:
+          - targetSegment: supplier
+            fieldMapping:
+              - targetField: primaryId
+                sourceField: enrichment.apVoucherType.carrierCode
+      - segmentMapping:
+          - targetSegment: billTo
+            fieldMapping:
+              - targetField: primaryId
+                sourceField: enrichment.apVoucherType.billToCustomerCode
+      - segmentMapping:
+          - targetSegment: voucherLogisticDetails
+          - fieldMapping:
+              - targetField: shipmentId
+                sourceField: enrichment.apVoucherType.shipmentNumber
+          - segmentMapping:
+              - targetSegment: commodityTypeCode
+              - fieldMapping:
+                  - targetField: value
+                    sourceField: enrichment.apVoucherType.commodityCode
+                  - targetField: codeListname
+                    default: "CommodityCode"
+          - fieldMapping:
+              - targetField: logisticServiceRequirementCode
+                sourceField: enrichment.apVoucherType.serviceCode
+          - segmentMapping:
+              - targetSegment: shipFrom
+              - fieldMapping:
+                  - targetField: primaryId
+                    sourceField: enrichment.apVoucherType.originShippingLocationCode
+                  - targetField: type
+                    sourceField: enrichment.apVoucherType.originShippingLocationTypeEnumVal
+
+          - segmentMapping:
+              - targetSegment: shipTo
+              - fieldMapping:
+                  - targetField: primaryId
+                    sourceField: enrichment.apVoucherType.destinationShippingLocationCode
+                  - targetField: type
+                    sourceField: enrichment.apVoucherType.destinationShippingLocationTypeEnumVal
+
+      - segmentListMapping:
+          - targetSegment: voucherCharge
+            sourceSegment: enrichment.apVoucherType.voucherCharge
+          - fieldMapping:
+              - targetField: systemChargeDetailId
+                sourceField: systemChargeDetailID
+              - targetField: voucherChargeLevelCode
+                operations:
+                  - customFunction:
+                      functionName: getVoucherChargeLevelCode
+                      fields: [ field: chargeLevelEnumVal ]
+
+              - targetField: voucherChargeDetailType
+                operations:
+                  - customFunction:
+                      functionName: getVoucherChargeDetailType
+                      fields: [ field: chargeDetailEnumVal ]
+
+              - targetField: voucherChargeStatusCode
+                operations:
+                  - customFunction:
+                      functionName: getVoucherChargeStatusCode
+                      fields: [ field: currentStatusEnumVal ]
+              - targetField: chargeCode
+                sourceField: chargeCode
+              - targetField: reasonCode
+                sourceField: reasonCode
+              - targetField: chargeUnits
+                sourceField: chargeUnits
+              - targetField: unitCost
+                sourceField: unitRate
+          - segmentMapping:
+              - targetSegment: discountAmount
+              - fieldMapping:
+                  - targetField: value
+                    operations:
+                      - customFunction:
+                          functionName: convertToFloat
+                          fields: [ field: discountAmount ]
+                  - targetField: currencyCode
+                    sourceField: originalCurrencyCode
+          - segmentMapping:
+              - targetSegment: chargedAmount
+              - fieldMapping:
+                  - targetField: value
+                    operations:
+                      - customFunction:
+                          functionName: convertToFloat
+                          fields: [ field: chargedAmount ]
+                  - targetField: currencyCode
+                    sourceField: originalCurrencyCode
+
+          - segmentMapping:
+              - targetSegment: totalTaxAmount
+              - fieldMapping:
+                  - targetField: value
+                    operations:
+                      - customFunction:
+                          functionName: convertToFloat
+                          fields: [ field: totalTaxAmount ]
+                  - targetField: currencyCode
+                    sourceField: originalCurrencyCode
+
+          - segmentMapping:
+              - targetSegment: paymentAmount
+              - fieldMapping:
+                  - targetField: value
+                    operations:
+                      - customFunction:
+                          functionName: convertToFloat
+                          fields: [ field: paymentAmount ]
+                  #No Mapping available
+                  #- targetField: currencyCode
+                   # sourceField: enrichment.apVoucherType.destinationShippingLocationTypeEnumVal
+          - segmentMapping:
+            - targetSegment: voucherChargeLogisticDetails
+            - segmentMapping:
+                - targetSegment: commodityTypeCode
+                - fieldMapping:
+                    - targetField: value
+                      sourceField: freightClassCode
+                      default: "FAK"
+                    - targetField: CodeListname
+                      default: "FreightClassCode"
+            - segmentMapping:
+                - targetSegment: transportEquipmentTypeCode
+                - fieldMapping:
+                    - targetField: value
+                      sourceField: equipmentTypeCode
+            - fieldMapping:
+                - targetField: loadId
+                  sourceField: systemLoadID
+                - targetField: shipmentId
+                  sourceField: systemShipmentID
+                - targetField: shipmentLegId
+                  sourceField: systemShipmentLegID
+                - targetField: containerId
+                  sourceField: systemContainerID
+
+          - fieldMapping:
+              - targetField: isPrePurchased
+                sourceField: prePurchasedFlag
+              - targetField: isTripLevelCharge
+                sourceField: tripLevelChargeFlag

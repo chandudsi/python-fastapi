@@ -1,0 +1,20 @@
+---
+- sourceModel: claim_check_notification
+  targetModel: claim_check_notification
+  modelMapping:
+    segmentMapping:
+      - targetSegment: ltdMetadata
+        segmentMapping:
+          - targetSegment: notificationMessage
+            fieldMapping:
+              - targetField: ingestionId
+                sourceField: bulkNotificationId
+              - targetField: endpoint
+                sourceField: extensions.endpoint
+              - targetField: endpointLabel
+                sourceField: endpointLabel
+              - targetField: fileName
+                operations:
+                  - customFunction:
+                      functionName: extract_file_name
+                      fields: [ field: bulkUri ]

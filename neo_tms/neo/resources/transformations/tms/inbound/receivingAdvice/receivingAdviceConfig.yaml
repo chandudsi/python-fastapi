@@ -1,0 +1,279 @@
+- sourceModel: receivingAdvice
+  targetModel: process_pod_status_update
+  modelMapping:
+    segmentListMapping:
+    - targetSegment: payload
+      segmentListVariableMapping:
+        - variableName: receiving_advice
+          operation:
+            - customFunction:
+                functionName: get_unique_load_receiving_advice
+        - variableName: line_items
+          operation:
+            - customFunction:
+                functionName: get_all_line_items
+        - variableName: enriched_load
+          operation:
+            - customFunction:
+                functionName: get_enriched_load_ra
+      sourceSegment: global_variable.receiving_advice
+      fieldVariableMapping:
+        - variableName: current_ra
+          variableValue: current_payload
+      segmentListMapping:
+        - targetSegment: shipmentUpdateProgressData
+          segmentListVariableMapping:
+            - variableName: distinct_load_line_item
+              operation:
+                - customFunction:
+                    functionName: get_unique_load_item_receiving_advice
+                    fields: global_variable.current_ra
+            - variableName: loadId
+              variableValue: global_variable.current_ra.receivingAdviceTransportInformation.transportLoadId
+            - variableName: loadDocument
+              operation:
+                - customFunction:
+                    functionName: get_current_load_document_ra
+                    fields: [global_variable.enriched_load, global_variable.loadId]
+            - variableName: carrierCode
+              variableValue: global_variable.loadDocument.carrierCode
+            - variableName: shipmentNumber
+              variableValue: global_variable.distinct_load_line_item.transportationShipmentId
+            - variableName: shipmentLegDocument
+              operation:
+                - customFunction:
+                    functionName: get_shipment_leg_document_ra
+                    fields: [global_variable.loadDocument, global_variable.shipmentNumber]
+            - variableName: nonAllocQuantity
+              operation:
+                - customFunction:
+                    functionName: get_total_non_alloc_quantity_ra
+                    fields: global_variable.shipmentLegDocument
+            - variableName: nonAllocWeight
+              operation:
+                - customFunction:
+                    functionName: get_total_non_alloc_weight_ra
+                    fields: global_variable.shipmentLegDocument
+            - variableName: systemShipmentLegID
+              variableValue: global_variable.shipmentLegDocument.systemShipmentLegID
+            - variableName: address
+              variableValue: global_variable.shipmentLegDocument.shipment.shipToAddress
+            - variableName: totalQuantityReceived
+              operation:
+                - customFunction:
+                    functionName: get_total_quantity_received_ra
+                    fields: [global_variable.current_ra, global_variable.shipmentNumber]
+            - variableName: shipToLocationCode
+              variableValue: global_variable.receiving_advice
+            - variableName: shippingLocationDocument
+              operation:
+                - customFunction:
+                    functionName: get_shipping_location_document_ra
+                    fields: global_variable.shipToLocationCode
+            - variableName: locationOffset
+              variableValue: global_variable.shippingLocationDocument.businessHours.timeZoneOffset
+            - variableName: shipmentWeight
+              operation:
+                - customFunction:
+                    functionName: get_total_shipment_weight_ra
+                    fields: [field: global_variable.receiving_advice, field: global_variable.shipmentNumber
+                            ,property: tms.uom.weight]
+              condition:
+               - customFunction:
+                   functionName: check_shipment_leg
+                   fields: global_variable.shipmentLegDocument
+          sourceSegment: global_variable.line_items
+          fieldVariableMapping:
+            - variableName: locationOffset
+              variableValue: global_variable.shippingLocationDocument.businessHours.timeZoneOffset
+          fieldMapping:
+            - targetField: carrierCode
+              sourceField: global_variable.carrierCode
+            - targetField: shipmentNumber
+              sourceField: transportationShipmentId
+            - targetField: systemShipmentLegID
+              operations:
+                - customFunction:
+                    functionName: get_shipment_leg_id_ra
+                    fields: [field: global_variable.loadDocument, field: transportationShipmentId]
+          segmentMapping:
+            - targetSegment: SECInformation
+              fieldMapping:
+                - targetField: SECCode
+                  default: "POD"
+                - targetField: movementDateTime
+                  operations:
+                    - function:
+                        functionName: getDateTime
+                        functionArguments: [
+                            field: global_variable.receiving_advice.receivingDateTime,
+                            constant: "False",
+                            property: "default_date_time_format.ra_time_format",
+                            property: "date_formats.gs1_date_time_format",
+                            constant: "False",
+                            property: "tms_default_timezone.timezone"
+                        ]
+                - targetField: city
+                  operations:
+                    - customFunction:
+                        functionName: get_shipment_address_values_ra
+                        fields: [field: global_variable.loadDocument, field: transportationShipmentId, constant: "city"]
+                - targetField: state
+                  operations:
+                    - customFunction:
+                        functionName: get_shipment_address_values_ra
+                        fields: [field: global_variable.loadDocument, field: transportationShipmentId, constant: "state"]
+                - targetField: countryCode
+                  operations:
+                    - customFunction:
+                        functionName: get_shipment_address_values_ra
+                        fields: [field: global_variable.loadDocument, field: transportationShipmentId, constant: "countryCode"]
+                - targetField: carrierCode
+                  sourceField: global_variable.carrierCode
+                - targetField: trailerNumber
+                  sourceField: global_variable.loadDocument.trailerNumber
+                - targetField: driverCode
+                  sourceField: global_variable.loadDocument.DriverCode
+                - targetField: sealNumber
+                  sourceField: global_variable.loadDocument.sealNumber
+                - targetField: teamDriverFlag
+                  default: true
+                - targetField: suspendedFunctionEnumVal
+                  default: "SUSP_NOT_SUSPENDED"
+                - targetField: loadScheduleCompletedFlag
+                  default: false
+            - targetSegment: proofOfDelivery
+              fieldMapping:
+              - targetField: PODDescription
+                default: "Normal POD"
+              - targetField: PODTotalPieces
+                operations:
+                  - customFunction:
+                      functionName: get_shipment_total_quantity_ra
+                      fields: [ field: global_variable.current_ra, field: transportationShipmentId, field: global_variable.loadDocument, property: tms.uom.weight ]
+              - targetField: PODTotalWeight
+                operations:
+                  - customFunction:
+                      functionName: get_shipment_total_weight_ra
+                      fields: [ field: global_variable.current_ra, field: transportationShipmentId, field: global_variable.loadDocument, property: tms.uom.weight ]
+              - targetField: PODDateTime
+                operations:
+                  - function:
+                      functionName: getDateTime
+                      functionArguments: [
+                          field: global_variable.receiving_advice.receivingDateTime,
+                          constant: "False",
+                          property: "default_date_time_format.ra_time_format",
+                          property: "date_formats.gs1_date_time_format",
+                          constant: "False",
+                          property: "tms_default_timezone.timezone"
+                      ]
+
+- sourceModel: receivingAdvice
+  targetModel: process_reference_number_update
+  modelMapping:
+    segmentListMapping:
+    - targetSegment: payload
+      segmentListVariableMapping:
+        - variableName: receiving_advice
+          operation:
+            - customFunction:
+                functionName: get_unique_load_receiving_advice
+        - variableName: enriched_load
+          operation:
+            - customFunction:
+                functionName: get_enriched_load_ra
+      sourceSegment: global_variable.receiving_advice
+      fieldVariableMapping:
+        - variableName: current_ra
+          variableValue: current_payload
+        - variableName: loadId
+          variableValue: global_variable.current_ra.receivingAdviceTransportInformation.transportLoadId
+        - variableName: loadDocument
+          operation:
+            - customFunction:
+                functionName: get_current_load_document_ra
+                fields: [ global_variable.enriched_load, global_variable.loadId ]
+        - variableName: inputShippingLocationCode
+          operation:
+            - customFunction:
+                functionName: get_input_shipping_loc_code_ra
+                fields: global_variable.loadDocument
+        - variableName: loadReferenceNumberID
+          operation:
+            - customFunction:
+                functionName: get_load_reference_number_id_ra
+                fields: global_variable.loadDocument
+        - variableName: stopDocument
+          operation:
+            - customFunction:
+                functionName: get_stop_shipping_location_code_ra
+                fields: [global_variable.loadDocument, global_variable.inputShippingLocationCode]
+        - variableName: systemStopID
+          variableValue: global_variable.stopDocument.systemStopID
+        - variableName: stopReferenceNumberID
+          operation:
+            - customFunction:
+                functionName: get_stop_reference_number_id_ra
+                fields: [field: global_variable.stopDocument, field: global_variable.inputShippingLocationCode]
+        - variableName: stopStatus
+          operation:
+            - customFunction:
+                functionName: get_stop_status
+                fields: [field: global_variable.inputShippingLocationCode, property: tms.defaults.stopStatus.loadReceive]
+        - variableName: loadStatus
+          operation:
+            - customFunction:
+                functionName: get_load_status
+                fields: [field: global_variable.loadDocument, field: global_variable.inputShippingLocationCode, field: global_variable.stopStatus]
+      segmentListMapping:
+        - targetSegment: referenceNumberUpdateData
+          condition:
+            - customFunction:
+                functionName: check_condition_for_load_ref_update
+                fields: [ property: tms.refNumActionEnumVal.update, field: global_variable.loadDocument.systemLoadID, field: global_variable.loadReferenceNumberID ]
+          fieldMapping:
+            - targetField: referenceNumberTypeCode
+              default: "WM_WH_STS_"
+            - targetField: referenceNumberEntityKey
+              sourceField: global_variable.loadDocument.systemLoadID
+            - targetField: referenceNumberCategoryEnumVal
+              default: "RNC_LD_LEG"
+            - targetField: referenceNumber
+              sourceField: global_variable.loadStatus
+            - targetField: referenceNumberActionEnumVal
+              operations:
+                - customFunction:
+                    functionName: get_reference_number_action_enum_for_load_ra
+                    fields: [ field: global_variable.stopReferenceNumberID, property: tms.refNumActionEnumVal.update]
+            - targetField: systemReferenceNumberID
+              condition:
+                - customFunction:
+                    functionName: check_system_ref_no_id
+                    fields: global_variable.loadReferenceNumberID
+              sourceField: global_variable.loadReferenceNumberID
+        - targetSegment: referenceNumberUpdateData
+          condition:
+            - customFunction:
+                functionName: check_condition_for_stop_ref_update
+                fields: [ property: tms.refNumActionEnumVal.update, field: global_variable.stopDocument.systemStopID, field: global_variable.stopReferenceNumberID ]
+          fieldMapping:
+            - targetField: referenceNumberTypeCode
+              default: "WM_SHP_STS"
+            - targetField: referenceNumberEntityKey
+              sourceField: global_variable.stopDocument.systemStopID
+            - targetField: referenceNumberCategoryEnumVal
+              default: "RNC_STOP"
+            - targetField: referenceNumber
+              sourceField: global_variable.stopStatus
+            - targetField: referenceNumberActionEnumVal
+              operations:
+                - customFunction:
+                    functionName: get_reference_number_action_enum_for_load_ra
+                    fields: [ field: global_variable.stopReferenceNumberID, property: tms.refNumActionEnumVal.update]
+            - targetField: systemReferenceNumberID
+              condition:
+                - customFunction:
+                    functionName: check_system_ref_no_id
+                    fields: global_variable.stopReferenceNumberID
+              sourceField: global_variable.stopReferenceNumberID

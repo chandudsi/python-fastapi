@@ -1,0 +1,216 @@
+---
+# item package level update start
+- sourceModel: item
+  targetModel: itemPackage_partial_change
+  sourceCondition:
+    customFunction:
+      functionName: check_item_partial_change
+      functionArgs: [field: item.documentActionCode, field: item.itemLogisticUnitInformation.itemLogisticUnit ]
+  modelMapping:
+    fieldVariableMapping:
+      - variableName: enrichment_itemFootPrint
+        variableValue: enrichment
+      - variableName: incoming_item_itemFootPrint
+        variableValue: incoming_item
+    segmentListMapping:
+      - targetSegment: payload
+        sourceSegment: item
+        condition:
+          customFunction:
+            functionName: is_itemPackage_level_update
+            fields: [ field: ownerOfTradeItem.primaryId, field: global_variable.incoming_item_itemFootPrint.ownerOfTradeItem.primaryId, property: 3pl_config, field: create_flag ]
+        fieldMapping:
+          - targetField: itemPackageLevelIDCode
+
+            operations:
+              - function:
+                  functionName: getCodemap
+                  functionArguments: [ constant: "TMS_contentLevelType_Code", field: itemLogisticUnitInformation.itemLogisticUnit.logisticUnitName ]
+          - targetField: itemNumber
+            sourceField: itemId.primaryId
+          - targetField: itemGroupCode
+            operations:
+              - customFunction:
+                  functionName: get_itemGroupCode_mapping
+                  fields: [ field: ownerOfTradeItem.primaryId, field: global_variable.incoming_item_itemFootPrint.ownerOfTradeItem.primaryId, property: 3pl_config ]
+          - targetField: activeFlag
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.isActive
+          - targetField: ratingUnitsForContainerEnumVal
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.transportationRatingUnit
+            default: RATING_UNIT_CONTAINER_PIECES
+          - targetField: contentLevelTypeCode
+            operations:
+              - function:
+                  functionName: getCodemap
+                  functionArguments: [ constant: "TMS_contentLevelType_Code", field: itemLogisticUnitInformation.itemLogisticUnit.logisticUnitName ]
+          - targetField: numberOfUnits
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.childPackageLevel.childPackageLevelQuantity
+          - targetField: stackingRuleEnumVal
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.stackingRule
+          - targetField: stackHeight
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.maximumStackingFactor
+          - targetField: stackFactor
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.stackingWeightFactor
+          - targetField: stackGroup
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.stackingGroup
+          - targetField: loadConfiguratorContainerTypeEnumVal
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.containerType
+          - targetField: carrierPackageType
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.parcelPackageCode
+          - targetField: carrierPackageRegion
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.carrierPackageRegion
+          - targetField: containerOrientation
+            operations:
+              - customFunction:
+                  functionName: get_orientation_mapping
+                  fields: [ field: itemLogisticUnitInformation.itemLogisticUnit.containerOrientation ]
+          - targetField: weight
+            operations:
+              - customFunction:
+                  functionName: get_item_group_uom_conversion
+                  fields: [ field: itemLogisticUnitInformation.itemLogisticUnit.grossWeight, field: ownerOfTradeItem.primaryId, constant: "Weight" ]
+
+          - targetField: volume
+            operations:
+              - customFunction:
+                  functionName: get_item_group_uom_conversion
+                  fields: [ field: itemLogisticUnitInformation.itemLogisticUnit.grossVolume, field: ownerOfTradeItem.primaryId, constant: "Volume" ]
+
+          - targetField: length
+            operations:
+              - customFunction:
+                  functionName: get_item_group_uom_conversion
+                  fields: [ field: itemLogisticUnitInformation.itemLogisticUnit.dimensionsOfLogisticUnit.depth, field: ownerOfTradeItem.primaryId, constant: "Length" ]
+
+          - targetField: width
+            operations:
+              - customFunction:
+                  functionName: get_item_group_uom_conversion
+                  fields: [ field: itemLogisticUnitInformation.itemLogisticUnit.dimensionsOfLogisticUnit.width, field: ownerOfTradeItem.primaryId, constant: "Length" ]
+
+          - targetField: height
+            operations:
+              - customFunction:
+                  functionName: get_item_group_uom_conversion
+                  fields: [ field: itemLogisticUnitInformation.itemLogisticUnit.dimensionsOfLogisticUnit.height, field: ownerOfTradeItem.primaryId, constant: "Length" ]
+# item package level update end
+
+# item package level create start
+- sourceModel: item
+  targetModel: process_item_package_create
+  modelMapping:
+    fieldVariableMapping:
+      - variableName: enrichment_itemFootPrint
+        variableValue: enrichment
+    segmentListMapping:
+      - targetSegment: payload
+        sourceSegment: item
+        condition:
+          function:
+            functionName: is_equal
+            fields: [ field: create_flag, constant: True ]
+        fieldMapping:
+          - targetField: itemPackageLevelIDCode
+
+            operations:
+              - function:
+                  functionName: getCodemap
+                  functionArguments: [ constant: "TMS_contentLevelType_Code", field: itemLogisticUnitInformation.itemLogisticUnit.logisticUnitName ]
+          - targetField: itemNumber
+            sourceField: itemId.primaryId
+          - targetField: itemGroupCode
+            sourceField: ownerOfTradeItem.primaryId
+          - targetField: activeFlag
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.isActive
+          - targetField: ratingUnitsForContainerEnumVal
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.transportationRatingUnit
+            default: RATING_UNIT_CONTAINER_PIECES
+          - targetField: contentLevelTypeCode
+            operations:
+              - function:
+                  functionName: getCodemap
+                  functionArguments: [ constant: "TMS_contentLevelType_Code", field: itemLogisticUnitInformation.itemLogisticUnit.logisticUnitName ]
+          - targetField: numberOfUnits
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.childPackageLevel.childPackageLevelQuantity
+          - targetField: stackingRuleEnumVal
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.stackingRule
+          - targetField: stackHeight
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.maximumStackingFactor
+          - targetField: stackFactor
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.stackingWeightFactor
+          - targetField: stackGroup
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.stackingGroup
+          - targetField: loadConfiguratorContainerTypeEnumVal
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.containerType
+          - targetField: carrierPackageType
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.parcelPackageCode
+          - targetField: carrierPackageRegion
+            sourceField: itemLogisticUnitInformation.itemLogisticUnit.carrierPackageRegion
+          - targetField: containerOrientation
+            operations:
+              - customFunction:
+                  functionName: get_orientation_mapping
+                  fields: [ field: itemLogisticUnitInformation.itemLogisticUnit.containerOrientation ]
+          - targetField: weight
+            operations:
+              - customFunction:
+                  functionName: get_item_group_uom_conversion
+                  fields: [ field: itemLogisticUnitInformation.itemLogisticUnit.grossWeight, field: ownerOfTradeItem.primaryId, constant: "Weight" ]
+
+          - targetField: volume
+            operations:
+              - customFunction:
+                  functionName: get_item_group_uom_conversion
+                  fields: [ field: itemLogisticUnitInformation.itemLogisticUnit.grossVolume, field: ownerOfTradeItem.primaryId, constant: "Volume" ]
+
+          - targetField: length
+            operations:
+              - customFunction:
+                  functionName: get_item_group_uom_conversion
+                  fields: [ field: itemLogisticUnitInformation.itemLogisticUnit.dimensionsOfLogisticUnit.depth, field: ownerOfTradeItem.primaryId, constant: "Length" ]
+
+          - targetField: width
+            operations:
+              - customFunction:
+                  functionName: get_item_group_uom_conversion
+                  fields: [ field: itemLogisticUnitInformation.itemLogisticUnit.dimensionsOfLogisticUnit.width, field: ownerOfTradeItem.primaryId, constant: "Length" ]
+
+          - targetField: height
+            operations:
+              - customFunction:
+                  functionName: get_item_group_uom_conversion
+                  fields: [ field: itemLogisticUnitInformation.itemLogisticUnit.dimensionsOfLogisticUnit.height, field: ownerOfTradeItem.primaryId, constant: "Length" ]
+
+# item package level create end
+
+# item master level update start
+- sourceModel: item
+  targetModel: itemMaster_update
+  sourceCondition:
+    customFunction:
+      functionName: check_item_partial_change
+      functionArgs: [field: item.documentActionCode, field: item.itemLogisticUnitInformation.itemLogisticUnit ]
+  modelMapping:
+    fieldVariableMapping:
+      - variableName: enrichment_itemFootPrint
+        variableValue: enrichment
+      - variableName: incoming_item_itemFootPrint
+        variableValue: incoming_item
+    segmentListMapping:
+      - targetSegment: payload
+        sourceSegment: item
+        fieldMapping:
+          - targetField: itemNumber
+            sourceField: itemId.primaryId
+
+          - targetField: itemGroupCode
+            operations:
+              - customFunction:
+                  functionName: get_itemGroupCode_mapping
+                  fields: [ field: ownerOfTradeItem.primaryId, field: global_variable.incoming_item_itemFootPrint.ownerOfTradeItem.primaryId, property: 3pl_config ]
+          - targetField: nominalWeight
+            operations:
+              - customFunction:
+                  functionName: get_item_group_uom_conversion
+                  fields: [ field: itemLogisticUnitInformation.itemLogisticUnit.grossWeight, field: ownerOfTradeItem.primaryId, constant: "Weight" ]
+# item master level update end

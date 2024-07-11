@@ -1,0 +1,199 @@
+bydm:
+  validation:
+    enabled: false # This will be false. Do not do any Changes.
+  receivers: # This Parameter is used to concatenate the dynamic receiver with mentioned constant. ex: LOC.BY01
+    prefix: "LOC"
+  concat_symbol: "." # Used for concatenating strings in generic utility method
+api:
+  # Retry delay in seconds
+  retryDelay: 1
+  # Retry count : Number of retries to be attempted
+  retryCount: 3
+  # api timeout : Time in seconds to wait for response from an api call
+  timeout : 200
+
+ack:
+  notification:
+    error:
+      enabled: "false"
+
+# Application name
+service.name: "TMA"
+
+# Number of messages kafka can consume at once
+consume.kafka.events: 5
+
+# expected value threads/processes. This property is being utilise by application to initiate processing the kafka events
+# in thread/process mode. If we are running this service in multi core cpu then we can mark this property as processes in rder
+# to utilise more processing power.
+execute.message.mode: "threads"
+
+# Total thread used while publishing the request to the endpoint. Default is -1.
+thread.max.publisher.count: 20
+
+thread.max.tansformation.count: 1
+
+tms_default_timezone:
+  timezone: "Asia/Kolkata"
+
+date_formats:
+  tm_date_time_format: "%Y-%m-%dT%H:%M:%S"
+  gs1_date_time_format: "%Y-%m-%dT%H:%M:%SZ"
+
+# This is used when we process a kafka event which is having multiple message id's.
+# Based on this property it will spawn multiple threads in order to process multiple message id's parallel.
+# Default value is 1.
+thread.max.messageid.count: 5
+
+updateStopPlanningStatus: True
+
+dms_status:
+    received_message_status: "Received"
+    processed_message_status.: "Processed"
+    error_message_status: "Error"
+
+key:
+  orgId_sellingChannel_orderId:
+    entity_name: "orders"
+
+workflow_names:
+  trigger: "trigger"
+  publisher: "publisher"
+  database: "database"
+  transformation: "transformation"
+  default: "Launch"
+
+# WON variables - START
+
+tms:
+  uom:
+    length: FOT
+    volume: FTQ
+    weight: LBR
+
+  refNumActionEnumVal:
+    update: AT_UPDATE
+
+  defaults:
+    stopStatus:
+      loadReceive: DELIVERED
+      loadWave: 'WAVED'
+      loadAware: 'AWARE'
+
+    shipmentStatus:
+      stockAllocated: 'WAVED'
+      productPicked: 'Pick Completed'
+      pickReleased: 'Pick Released'
+      waveCancelled: 'Wave Cancelled'
+      pickCancelled: 'Pick Cancelled'
+  # Following flags and fields are used in DA - QuantityUpdate
+  DespatchAdvice:
+    update:
+      shipment:
+        actual: true
+    override:
+      planned:
+        estimate: true
+    shipment:
+      actual:
+        quantity:
+          param: ReferenceNumber
+        weight:
+          param: ReferenceNumber
+        volume:
+          param: ReferenceNumber
+
+default_date_time_format:
+  input_format: "%Y-%m-%d %H:%M:%S"
+  output_format: "%Y-%m-%dT%H:%M:%S"
+  timezone: "US/Central"
+  source_timezone: "%Y-%m-%d %H:%M:%S"
+  date_format_with_timezone: "%Y-%m-%d %H:%M:%S.%f%z"
+  tpdc_time_format: "%Y-%m-%dT%H:%M:%S%z"
+  ra_time_format: "%Y-%m-%dT%H:%M:%S%z"
+
+stopPlanningStatus:
+  wave: 'STPPLNG_STAT_PICKED'
+  productPicked: 'STPPLNG_STAT_LOCKED'
+  waveCancelled: 'STPPLNG_STAT_DEFAULT'
+
+# WON variables - END
+
+update:
+  shipment:
+    actual: true
+
+override:
+  planned:
+    estimate: true
+
+bydm.receivers.concat.parameter: '.'
+
+tl_parsing:
+  enabled: true #perform TL parsing only when true
+
+compression:
+  enabled: false
+  threshold: 500 # size in kb
+  algorithm: 'gz'
+  # compression identifier key can be other than content-type in header, need to give all identifiers here
+  # which will internally set the 'content-type' key header
+  compression_type_identifier: ['message_compression_type', 'messageCompressionType']
+
+tracking_services:
+  enabled: true
+  type: aeh
+  aeh:
+    connection:
+      connection_string: keyvault::{ENVIRONMENT}-{REALM}-tracking-service-aeh-topic
+      event_hub_name: neo-tracking-evh
+  enable_only_error_record: false
+  compression:
+    algorithm: 'gz'
+  claim_check:
+    threshold: 500   # size in kb
+    endpointName: "tracking_blob"
+    path: "tracking_blob\\{realm}\\{parentId}" # exact location of claim check blob
+
+
+kafka_rate_limiting:
+  limit_requests: 40
+
+eligible_error_codes_for_replay: [ "FILE_WRITE_ACCESS_ERROR", "CONNECTION_ERROR", "CONNECTION_TIMEOUT_ERROR",
+                                   "CONNECTION_CONFIGURATION_ERROR" ] # list for replayable error codes
+
+# aeh topic configurations for listening to config refresh events
+aeh_event_listener:
+  connection:
+    event_hub_name: "neo-kv-refresh-evh"
+    connection_string: "Keyvault::{ENVIRONMENT}-{REALM}-kv-refresh-aeh-topic"
+    group_id: '$Default'
+  options:
+    # this is being used for storing the checkpoint
+    storage_connection_string: "keyvault::{ENVIRONMENT}-{REALM}-storage-connection"
+    checkpoint_container_name: "neo-config-kv-refresh-container"
+
+# Make sure to keep the database secrets in sync with the secret names for db username and password in key vault
+key_vault_refresh:
+  valid_key_vault_events: ["Microsoft.KeyVault.SecretNewVersionCreated"]
+  database_secrets: []
+
+# for controlling the enrichment call we can have use below property in application.yaml file
+
+enrichment_rate_limiting:
+  limit_requests: 50
+
+# Event hub details for listening to replay events from replay service
+aeh_replay_listener:
+  connection:
+    event_hub_name: "neo-replay-tma-evh"
+    connection_string: "keyvault::{ENVIRONMENT}-{REALM}-replay-tma-aeh-topic"
+    group_id: "$Default"
+  options:
+    # this is being used for storing the checkpoint
+    storage_connection_string: "keyvault::{ENVIRONMENT}-{REALM}-storage-connection"
+    checkpoint_container_name: "neo-checkpoint"
+
+voucher:
+  bydm:
+    messageVersion: "BYDM 2021.9.0"

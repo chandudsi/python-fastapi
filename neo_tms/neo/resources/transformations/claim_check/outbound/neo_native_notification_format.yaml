@@ -1,0 +1,31 @@
+---
+- sourceModel: claim_check_notification
+  targetModel: claim_check_notification
+  modelMapping:
+    fieldMapping:
+      - sourceField: creationDateTime
+        targetField: creationDateTime
+      - sourceField: documentStatusCode
+        targetField: documentStatusCode
+      - sourceField: sourceOfBulkMessage
+        targetField: sender
+      - sourceField: bulkNotificationId
+        targetField: instanceIdentifier
+      - sourceField: extensions.parentMessageId
+        targetField: parentMessageId
+      - sourceField: bulkNotificationId
+        targetField: messageId
+      - sourceField: bulkType
+        targetField: originalEntityType
+      - sourceField: extensions.originalMessageSize
+        targetField: originalMessageSize
+      - targetField: entityType
+        default: "claim_check_notification"
+      - sourceField: extensions.endpoint
+        targetField: endpoint
+      - sourceField: endpointLabel
+        targetField: endpointLabel
+      - sourceField: bulkUri
+        targetField: path
+      - sourceField: compressionFormat
+        targetField: compressionFormat

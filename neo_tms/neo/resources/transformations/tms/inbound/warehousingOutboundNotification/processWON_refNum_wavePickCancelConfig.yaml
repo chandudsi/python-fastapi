@@ -1,0 +1,161 @@
+---
+- sourceModel: warehousingOutboundNotification
+  targetModel: process_reference_number_update_cancel
+  sourceCondition:
+    customFunction:
+      functionName: check_won_status_Code_wave_pick_cancel
+      functionArgs: [ field: current_payload ]
+  modelMapping:
+    segmentMapping:
+      - targetSegment: payload
+        fieldVariableMapping:
+          - variableName: input_payload
+            variableValue: current_payload
+
+          - variableName: TMShipmentId
+            operation:
+              - customFunction:
+                  functionName: get_tms_shipment_ids
+                  fields: [ field: global_variable.input_payload.event.warehousingOutboundNotification.shipment.transactionalReference ]
+
+          - variableName: WON_ShippingLocationCode
+            variableValue: global_variable.input_payload.event.warehousingOutboundNotification.shipment.shipFrom.primaryId
+
+          - variableName: transportLoadId
+            variableValue: global_variable.input_payload.event.warehousingOutboundNotification.shipment.shipmentTransportationInformation.transportLoadId
+
+          - variableName: validate_ids
+            operation:
+              - customFunction:
+                  functionName: tms_validate_won_ids
+                  fields: [ field: global_variable.WON_ShippingLocationCode, field: global_variable.transportLoadId ]
+
+          - variableName: reference_number_shipment_leg_stock_cancellation
+            operation:
+              - customFunction:
+                  functionName: update_shipment_ref_based_on_enriched_shipment_leg_stock_cancel
+                  fields: [ field: global_variable.input_payload.event.warehousingOutboundNotification.shipment,
+                            field: global_variable.input_payload.enrichment.shipment,
+                            field: global_variable.input_payload.event.warehousingOutboundNotification.shipment.warehousingOutboundStatusCode,
+                            field: global_variable.TMShipmentId,
+                            property: "tms.defaults.shipmentStatus.waveCancelled",
+                            property: "tms.refNumActionEnumVal.update"
+                  ]
+
+          - variableName: reference_number_shipment_stock_cancellation
+            operation:
+              - customFunction:
+                  functionName: update_shipment_ref_based_on_enriched_shipment
+                  fields: [ field: global_variable.input_payload.event.warehousingOutboundNotification.shipment,
+                            field: global_variable.input_payload.enrichment.shipment,
+                            field: global_variable.input_payload.event.warehousingOutboundNotification.shipment.warehousingOutboundStatusCode,
+                            field: global_variable.TMShipmentId,
+                            property: "tms.defaults.shipmentStatus.stockAllocated",
+                            property: "tms.defaults.shipmentStatus.productPicked",
+                            property: "tms.defaults.shipmentStatus.waveCancelled",
+                            property: "tms.refNumActionEnumVal.update"
+                  ]
+
+          - variableName: countOfUnWavedShipmentsAtStop
+            operation:
+              - customFunction:
+                  functionName: get_count_of_unwaved_shipments_at_stop
+                  fields: [ field: global_variable.input_payload.enrichment.load.shipmentLeg.shipFromLocationCode,
+                            field: global_variable.input_payload.event.warehousingOutboundNotification.shipment.shipFrom.additionalPartyId.value
+                  ]
+
+          - variableName: reference_number_load_wave_cancel
+            operation:
+              - customFunction:
+                  functionName: update_shipment_ref_based_on_enriched_merged_load
+                  fields: [field: global_variable.countOfUnWavedShipmentsAtStop,
+                          field: global_variable.input_payload.enrichment.load,
+                          field: global_variable.input_payload.event.warehousingOutboundNotification.shipment,
+                          field: global_variable.WON_ShippingLocationCode,
+                          field: global_variable.TMShipmentId,
+                          property: "tms.defaults.shipmentStatus.stockAllocated",
+                          property: "tms.defaults.shipmentStatus.productPicked",
+                          property: "tms.refNumActionEnumVal.update",
+                          property: "tms.defaults.stopStatus.loadAware"
+                  ]
+
+          - variableName: reference_number_stop_wave_cancel
+            operation:
+              - customFunction:
+                  functionName: update_shipment_ref_based_on_enriched_merged_stop
+                  fields: [ field: global_variable.input_payload.enrichment.load,
+                            field: global_variable.input_payload.event.warehousingOutboundNotification.shipment,
+                            field: global_variable.WON_ShippingLocationCode,
+                            field: global_variable.TMShipmentId,
+                            property: "tms.defaults.shipmentStatus.stockAllocated",
+                            property: "tms.defaults.shipmentStatus.productPicked",
+                            property: "tms.refNumActionEnumVal.update",
+                            property: "tms.defaults.stopStatus.loadAware"
+                  ]
+
+        segmentListMapping:
+
+          - targetSegment: referenceNumberUpdateData
+            sourceSegment: global_variable.reference_number_load_wave_cancel
+            fieldMapping:
+              - targetField: referenceNumberTypeCode
+                default: "WM_WH_STS_"
+              - targetField: referenceNumberEntityKey
+                sourceField: load_mapped_data.reference_number_entity_key
+              - targetField: referenceNumberCategoryEnumVal
+                default: "RNC_LD_LEG"
+              - targetField: referenceNumber
+                sourceField: load_mapped_data.reference_number
+              - targetField: referenceNumberActionEnumVal
+                sourceField: load_mapped_data.reference_number_action_enum_val
+              - targetField: systemReferenceNumberID
+                sourceField: load_mapped_data.system_reference_number_id
+
+          - targetSegment: referenceNumberUpdateData
+            sourceSegment: global_variable.reference_number_stop_wave_cancel
+            fieldMapping:
+              - targetField: referenceNumberTypeCode
+                default: "WM_SHP_STS"
+              - targetField: referenceNumberEntityKey
+                sourceField: stop_mapped_data.reference_number_entity_key
+              - targetField: referenceNumberCategoryEnumVal
+                default: "RNC_STOP"
+              - targetField: referenceNumber
+                sourceField: stop_mapped_data.reference_number
+              - targetField: referenceNumberActionEnumVal
+                sourceField: stop_mapped_data.reference_number_action_enum_val
+              - targetField: systemReferenceNumberID
+                sourceField: stop_mapped_data.system_reference_number_id
+
+          - targetSegment: referenceNumberUpdateData
+            sourceSegment: global_variable.reference_number_shipment_leg_stock_cancellation
+            fieldMapping:
+              - targetField: referenceNumberTypeCode
+                default: "WM_SHIPMENT"
+              - targetField: referenceNumberEntityKey
+                sourceField: shipment_leg_cancel_mapped_data.reference_number_entity_key
+              - targetField: referenceNumberCategoryEnumVal
+                default: "RNC_SHPM"
+              - targetField: referenceNumber
+                sourceField: shipment_leg_cancel_mapped_data.reference_number
+              - targetField: referenceNumberActionEnumVal
+                sourceField: shipment_leg_cancel_mapped_data.reference_number_action_enum_val
+              - targetField: systemReferenceNumberID
+                sourceField: shipment_leg_cancel_mapped_data.system_reference_number_id
+
+          - targetSegment: referenceNumberUpdateData
+            sourceSegment: global_variable.reference_number_shipment_stock_cancellation
+            fieldMapping:
+              - targetField: referenceNumberTypeCode
+                default: "WM_SHIPMENT"
+              - targetField: referenceNumberEntityKey
+                sourceField: mapped_data.reference_number_entity_key
+              - targetField: referenceNumberCategoryEnumVal
+                default: "RNC_SHPM"
+              - targetField: referenceNumber
+                sourceField: mapped_data.reference_number
+              - targetField: referenceNumberActionEnumVal
+                sourceField: mapped_data.reference_number_action_enum_val
+              - targetField: systemReferenceNumberID
+                sourceField: mapped_data.system_reference_number_id
+

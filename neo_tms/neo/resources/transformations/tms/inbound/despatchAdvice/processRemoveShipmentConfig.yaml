@@ -1,0 +1,98 @@
+---
+- sourceModel: despatchAdvice
+  targetModel: process_remove_shipment_from_load
+  modelMapping:
+    segmentListMapping:
+      - targetSegment: payload
+        segmentListVariableMapping:
+          - variableName: despatch_advice_with_srn
+            operation:
+              - customFunction:
+                  functionName: get_despatch_advice_with_srn
+          - variableName: shipment_leg
+            operation:
+              - customFunction:
+                  functionName: get_shipment_leg
+        segmentListMapping:
+          - targetSegment: removeFromPlannedLoadData
+            sourceSegment: global_variable.despatch_advice_with_srn
+            fieldVariableMapping:
+            - variableName: loadDocument
+              operation:
+                - customFunction:
+                    functionName: get_current_load
+                    fields: despatchAdviceTransportInformation.transportLoadId
+            - variableName: stopDocument
+              operation:
+                - customFunction:
+                    functionName: get_stop_document
+                    fields: [field: global_variable.loadDocument, field: shipFrom.primaryId]
+            - variableName: missing_shipments
+              operation:
+              - customFunction:
+                  functionName: get_missing_shipment
+                  fields: [field: global_variable.stopDocument, field: global_variable.shipment_leg]
+
+            fieldMapping:
+            - targetField: systemLoadID
+              sourceField: global_variable.loadDocument.systemLoadID
+              condition:
+              - customFunction:
+                  functionName: not_blank
+                  fields: global_variable.missing_shipments
+            - targetField: systemShipmentLegID
+              sourceField: global_variable.missing_shipments
+
+
+- sourceModel: despatchAdvice
+  targetModel: process_reference_number_update
+  modelMapping:
+    segmentListMapping:
+      - targetSegment: payload
+        segmentListVariableMapping:
+          - variableName: despatch_advice_with_srn
+            operation:
+              - customFunction:
+                  functionName: get_despatch_advice_with_srn
+          - variableName: shipment_leg
+            operation:
+              - customFunction:
+                  functionName: get_shipment_leg
+        sourceSegment: global_variable.despatch_advice_with_srn
+        segmentListMapping:
+          - targetSegment: referenceNumberUpdateData
+            segmentListVariableMapping:
+            - variableName: loadDocument
+              operation:
+                - customFunction:
+                    functionName: get_current_load
+                    fields: despatchAdviceTransportInformation.transportLoadId
+            - variableName: stopDocument
+              operation:
+                - customFunction:
+                    functionName: get_stop_document
+                    fields: [field: global_variable.loadDocument, field: shipFrom.primaryId]
+            - variableName: missing_shipments
+              operation:
+              - customFunction:
+                  functionName: get_missing_shipments_for_ref_update
+                  fields: [field: global_variable.stopDocument, field: global_variable.shipment_leg]
+            sourceSegment: global_variable.missing_shipments
+            fieldMapping:
+            - targetField: referenceNumberTypeCode
+              default: "WM_REPLAN_YN"
+            - targetField: referenceNumberCategoryEnumVal
+              default: "RNC_SHPM"
+            - targetField: referenceNumber
+              default: "DO_NOT_REPLAN"
+            - targetField: ReferenceNumberActionEnumVal
+              default: "AT_ADD"
+            - targetField:  referenceNumberEntityKey
+              operations:
+              - customFunction:
+                  functionName: get_reference_number_entity_key
+                  fields: [field: global_variable.loadDocument, field: shipment_id]
+
+
+
+

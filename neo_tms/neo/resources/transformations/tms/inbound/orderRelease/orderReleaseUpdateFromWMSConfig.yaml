@@ -1,0 +1,495 @@
+---
+- sourceModel: orderRelease
+  targetModel: process_full_shipment_update
+  sourceCondition:
+    customFunction:
+      functionName: check_document_action_code_update_from_wms
+      functionArgs: [field: orderRelease, field: enrichment.shipment]
+  modelMapping:
+    fieldVariableMapping:
+      - variableName: enrichment
+        variableValue: enrichment
+    fieldMapping:
+      - targetField: ignoreAllShipmentReferenceNumbersFlag
+        default: true
+      - targetField: executeARRatingFlag
+        default: false
+      - targetField: executeAPRatingFlag
+        default: false
+      - targetField: IgnoreAllThroughPointsFlag
+        default: true
+    segmentListMapping:
+      - targetSegment: shipment
+        sourceSegment: orderRelease
+        fieldVariableMapping:
+          - variableName: current_order
+            variableValue: current_payload
+          - variableName: shipment_enrichment
+            operations:
+              - customFunction:
+                  functionName: get_shipment_details
+                  fields: [ field: orderId, field: global_variable.enrichment.shipment]
+          - variableName: customer_enrichment
+            operations:
+              - customFunction:
+                  functionName: get_customer_details
+                  fields: [ field: tmCustomerCode, field: global_variable.enrichment.customer ]
+          - variableName: shipFromLocation_Enrichment
+            operations:
+              - customFunction:
+                  functionName: get_shippingLocation_details
+                  fields: [ field: orderLogisticalInformation.shipFrom.primaryId, field: global_variable.enrichment.shippingLocation ]
+          - variableName: shipToLocation_Enrichment
+            operations:
+              - customFunction:
+                  functionName: get_shippingLocation_details
+                  fields: [ field: orderLogisticalInformation.shipTo.primaryId, field: global_variable.enrichment.shippingLocation ]
+          - variableName: active_shipment_lines
+            operations:
+              - customFunction:
+                  functionName: get_active_shipment_lines
+                  fields: [ field: lineItem ]
+        injectPayload:
+          - customFunction:
+              functionName: set_pick_up_dropOff_dates
+              fields: [ field: orderLogisticalInformation.orderLogisticalDateInformation, field: global_variable.shipFromLocation_Enrichment, field: global_variable.shipToLocation_Enrichment ]
+
+          - customFunction:
+              functionName: attach_shipment_reference_number
+              fields: [ field: orderLogisticalInformation.shipFrom.primaryId, field: tmCustomerCode,
+                        field: global_variable.customer_enrichment.customerCode, field: orderId,
+                        field: supplier.primaryId, field: tmReferenceNumber, field: orderTypeCode]
+        fieldMapping:
+          - targetField: shipmentNumber
+            sourceField: orderId
+          - targetField: shipmentInputSourceEnumVal
+            default: IS_EXTERNAL_API
+          - targetField: logisticsGroupCode
+            operations:
+              - customFunction:
+                  functionName: get_logisticsGroup_code
+                  fields: [ field: documentActionCode, field: buyer, field: orderLogisticalInformation.shipFrom.primaryId ]
+          - targetField: shipmentEntryModeEnumVal
+            sourceField: shipmentEntryTypeId
+          - targetField: splitMethodEnumVal
+            operations:
+              - customFunction:
+                  functionName: get_shipmentEntryType_id
+                  fields: [ field: lineItem, field: shipmentSplitMethod]
+          - targetField: shipmentPriority
+            operations:
+              - customFunction:
+                  functionName: get_shipment_priority
+                  fields: [ field: lineItem, field: orderPriority ]
+
+          - targetField: freightTermsEnumVal
+            operations:
+              - function:
+                  functionName: get_property_value_codmap
+                  fields: [ constant: codMapConfig.configuration.systemDefaults.freightTerm, constant: True ]
+
+          - targetField: shipFromLocationTypeEnumVal
+            operations:
+              - customFunction:
+                  functionName: concat_values
+                  fields: [ constant: "SFT", field: global_variable.shipFromLocation_Enrichment.shippingLocationTypeEnumVal ]
+
+          - targetField: shipToLocationTypeEnumVal
+            operations:
+              - customFunction:
+                  functionName: concat_values
+                  fields: [ constant: "STT", field: global_variable.shipToLocation_Enrichment.shippingLocationTypeEnumVal ]
+          - targetField: shipFromLocationCode
+            sourceField: orderLogisticalInformation.shipFrom.primaryId
+          - targetField: shipFromAppointmentRequiredFlag
+            default: false
+          - targetField: shipToAppointmentRequiredFlag
+            default: false
+          - targetField: shipToLocationCode
+            sourceField: orderLogisticalInformation.shipTo.primaryId
+          - targetField: commodityCode
+            sourceField: commodityCode
+          - targetField: carrierServiceEquipmentRuleEnumVal
+            default: CSE_NULL
+          - targetField: ignoreChargeOverridesFlag
+            operations:
+              - function:
+                  functionName: is_not_none
+                  fields: [field: chargeOverride ]
+          - targetField: ignoreReferenceNumbersFlag
+            default: false
+          - targetField: ignoreThroughPointsFlag
+            operations:
+              - customFunction:
+                  functionName: check_flag
+                  fields: [ field: shipmentThroughPoint ]
+          - targetField: ignoreContainersFlag
+            default: false
+          - targetField: ignoreContainersFlag
+            default: false
+          - targetField: itineraryTemplateCode
+            sourceField: routeTemplate
+          - targetField: equipmentTypeCode
+            sourceField: transportEquipment.transportEquipmentTypeCode.value
+          - targetField: preferredAPCarrierCode
+            sourceField: orderLogisticalInformation.shipmentTransportationInformation.carrier.primaryId
+          - targetField: preferredAPServiceCode
+            operations:
+              - function:
+                  functionName: getCodemap
+                  fields: [ constant: transportServiceLevelCode,
+                            field: orderLogisticalInformation.shipmentTransportationInformation.transportServiceLevelCode,
+                            constant: True ]
+          - targetField: ARServiceCode
+            operations:
+              - function:
+                  functionName: getCodemap
+                  fields: [ constant: transportServiceLevelCode,
+                            field: shipmentServiceLevelCode,
+                            constant: True ]
+
+          - targetField: tractorEquipmentTypeCode
+            operations:
+              - function:
+                  functionName: getCodemap
+                  fields: [ constant: transportMeansTypeCodeFromGS1ToApp,
+                            field: orderLogisticalInformation.shipmentTransportationInformation.transportMeansType,
+                            constant: True ]
+          - targetField: shipDirectFlag
+            sourceField: isDirectShipment
+          - targetField: urgentFlag
+            sourceField: isUrgentShipment
+          - targetField: shipmentConsolidationClassCode
+            sourceField: shipmentConsolidationClassCode
+          - targetField: MergeInTransitConsolidationCode
+            sourceField: mitccCode
+          - targetField: mergeInTransitConsolidationNum
+            sourceField: mitccSequence
+          - targetField: INCOTermsCode
+            sourceField: deliveryTerms.incotermsCode
+          - targetField: buyerSellerEnumVal
+            sourceField: incotermsBuyerSellerRelationship
+
+          - targetField: INCOShippingLocationCode
+            sourceField: incotermsShippingLocation.primaryId
+          - targetField: INCOShippingLocationTypeEnumVal
+            sourceField: incotermsShippingLocationType
+          - targetField: deferAPRatingFlag
+            sourceField: isApRatingDeferred
+          - targetField: deferARRatingFlag
+            sourceField: isArRatingDeferred
+
+
+          - targetField: useOriginDefaultsFlag
+            sourceField: isShippingOriginProfileRefreshed
+          - targetField: useDestinationDefaultsFlag
+            sourceField: isShippingDestinationProfileRefreshed
+          - targetField: itemGroupCode
+            sourceField: itemFamilyGroup
+          - targetField: deferARRatingFlag
+            sourceField: bookingMitccCode
+
+          - targetField: shipmentEntryTypeCode
+            sourceField: shipmentEntryTypeId
+          - targetField: holdFlag
+            sourceField: holdShipment
+          - targetField: shipmentEntryTypeCode
+            sourceField: shipmentEntryTypeId
+          - targetField: shipmentEntryTypeCode
+            sourceField: shipmentEntryTypeId
+          - targetField: shipmentDescription
+            sourceField: description
+          - targetField: billToCustomerCode
+            sourceField: billTo.primaryId
+          - targetField: profitCenterCode
+            sourceField: profitCenterCode
+          - targetField: shipmentEntryVersionCode
+            sourceField: shipmentEntryVersionId
+          - targetField: systemPlanID
+            sourceField: planId
+          - targetField: customerCode
+            operations:
+              - customFunction:
+                  functionName: get_alternate_value
+                  fields: [ field: tmCustomerCode, field: customer_enrichment.customerCode ]
+          - targetField: deferARRatingFlag
+            sourceField: isArRatingDeferred
+        segmentMapping:
+          -  targetSegment: UnitOfMeasure
+             fieldMapping:
+               - targetField: systemUnitOfMeasureEnumVal
+                 operations:
+                   - function:
+                       functionName: get_property_value_codmap
+                       fields: [ constant: codMapConfig.configuration.systemDefaults.systemUnitOfMeasure, constant: True ]
+               - targetField: weightUnitOfMeasureEnumVal
+                 operations:
+                   - function:
+                       functionName: get_property_value_codmap
+                       fields: [ constant: codMapConfig.configuration.systemDefaults.weightUnitOfMeasure, constant: True ]
+
+               - targetField: lengthUnitOfMeasureEnumVal
+                 operations:
+                   - function:
+                       functionName: get_property_value_codmap
+                       fields: [ constant: codMapConfig.configuration.systemDefaults.lengthUnitOfMeasure, constant: True ]
+
+               - targetField: distanceUnitOfMeasureEnumVal
+                 operations:
+                   - function:
+                       functionName: get_property_value_codmap
+                       fields: [ constant: codMapConfig.configuration.systemDefaults.distanceUnitOfMeasure, constant: True ]
+          -  targetSegment: shipToAddress
+             fieldMapping:
+               - targetField: city
+                 sourceField: orderLogisticalInformation.shipTo.address.city
+               - targetField: countryCode
+                 operations:
+                   - function:
+                       functionName: getCodemap
+                       fields: [ constant: Two_Char_CountryCode,
+                                 field: orderLogisticalInformation.shipTo.address.countryCode ]
+               - targetField: postalCode
+                 sourceField: orderLogisticalInformation.shipTo.address.postalCode
+               - targetField: state
+                 sourceField: orderLogisticalInformation.shipTo.address.state
+               - targetField: street
+                 sourceField: orderLogisticalInformation.shipTo.address.streetAddressOne
+               - targetField: block
+                 sourceField: orderLogisticalInformation.shipTo.address.streetAddressTwo
+               - targetField: unit
+                 sourceField: orderLogisticalInformation.shipTo.address.streetAddressThree
+               - targetField: latitude
+                 sourceField: orderLogisticalInformation.shipTo.address.geographicalCoordinates.latitude
+               - targetField: longitude
+                 sourceField: orderLogisticalInformation.shipTo.address.geographicalCoordinates.longitude
+               - targetField: geoCodeOverridenFlag
+                 sourceField: orderLogisticalInformation.shipTo.areGeographicalCoordinatesOverridden
+               - targetField: residentialFlag
+                 sourceField: orderLogisticalInformation.shipTo.isResidentialAddress
+               - targetField: addressNotes
+                 sourceField: orderLogisticalInformation.shipTo.note.value
+          - targetSegment: shipFromAddress
+            fieldMapping:
+              - targetField: city
+                sourceField: orderLogisticalInformation.shipFrom.address.city
+              - targetField: countryCode
+                operations:
+                  - function:
+                      functionName: getCodemap
+                      fields: [ constant: Two_Char_CountryCode,
+                                field: orderLogisticalInformation.shipFrom.address.countryCode ]
+              - targetField: postalCode
+                sourceField: orderLogisticalInformation.shipFrom.address.postalCode
+              - targetField: state
+                sourceField: orderLogisticalInformation.shipFrom.address.state
+              - targetField: street
+                sourceField: orderLogisticalInformation.shipFrom.address.streetAddressOne
+              - targetField: block
+                sourceField: orderLogisticalInformation.shipFrom.address.streetAddressTwo
+              - targetField: unit
+                sourceField: orderLogisticalInformation.shipFrom.address.streetAddressThree
+              - targetField: latitude
+                sourceField: orderLogisticalInformation.shipFrom.address.geographicalCoordinates.latitude
+              - targetField: longitude
+                sourceField: orderLogisticalInformation.shipFrom.address.geographicalCoordinates.longitude
+              - targetField: geoCodeOverridenFlag
+                sourceField: orderLogisticalInformation.shipFrom.areGeographicalCoordinatesOverridden
+              - targetField: residentialFlag
+                sourceField: orderLogisticalInformation.shipFrom.isResidentialAddress
+              - targetField: addressNotes
+                sourceField: orderLogisticalInformation.shipFrom.note.value
+          -  targetSegment: memo
+             injectPayload:
+               - customFunction:
+                   functionName: get_order_note_memo
+                   fields: [ field: orderNote ]
+
+
+
+
+
+        segmentListMapping:
+        - targetSegment: newNote
+          sourceSegment: orderNote
+          condition:
+            - function:
+              functionName: is_not_equal
+              fields: [ field: type, constant: "MEMO" ]
+          fieldMapping:
+            - targetField: description
+              sourceField: text.value
+            - targetField: userGroupTypeEnumVal
+              default: "UG_EMPLOYEE"
+
+        - targetSegment: throughPoint
+          sourceSegment: shipmentThroughPoint
+          fieldMapping:
+            - targetField: shippingThroughPointEnumVal
+              sourceField: locationType
+            - targetField: shippingThroughPointLocationCode
+              sourceField: additionalLocationId
+            - targetField: carrierCode
+              sourceField: carrier.primaryId
+            - targetField: serviceCode
+              operations:
+                - function:
+                    functionName: getCodemap
+                    fields: [ constant: transportServiceLevelCode,
+                              field: locationType,
+                              constant: True ]
+        - targetSegment: chargeOverrides
+          sourceSegment: chargeOverride
+          fieldMapping:
+            - targetField: applyAROptionEnumVal
+              sourceField: arChargeOptionLevel
+            - targetField: chargeCode
+              sourceField: chargeCode
+            - targetField: applyAPOptionEnumVal
+              sourceField: apChargeOptionLevel
+            - targetField: manualOverrideUnits
+              sourceField: manualOverrideQuantity.value
+        - targetSegment: container
+          sourceSegment: global_variable.active_shipment_lines
+          fieldMapping:
+            - targetField: itemNumber
+              sourceField: transactionalTradeItem.primaryId
+            - targetField: containerTypeCode
+              default: "*DFT"
+            - targetField: systemContainerID
+              operations:
+                - customFunction:
+                    functionName: get_container_id_for_line
+                    fields: [ field: global_variable.enrichment.shipment.container, field: lineItemNumber]
+            - targetField: ignoreReferenceNumbersFlag
+              default: false
+            - targetField: splitMethodEnumVal
+              operations:
+                - function:
+                    functionName: getCodemap
+                    fields: [ constant: shipmentSplitMethodCodeFromGS1ToApp,
+                              field: shipmentSplitMethod]
+            - targetField: itemDescription
+              operations:
+                - customFunction:
+                    functionName: get_item_description_from_wms
+                    fields: [ field: global_variable.enrichment.shipment ]
+            - targetField: ignoreShipmentItemsFlag
+              operations:
+                - customFunction:
+                    functionName: get_container_item_flag
+                    fields: [ field: global_variable.customer_enrichment.itemLevelDetailEnumVal,
+                              field: global_variable.current_order.shipmentEntryModeEnumVal ]
+            - targetField: ignoreWeightByFreightClassFlag
+              operations:
+                - customFunction:
+                    functionName: get_container_item_flag
+                    fields: [ field: global_variable.customer_enrichment.itemLevelDetailEnumVal,
+                              field: global_variable.current_order.shipmentEntryModeEnumVal ]
+            - targetField: quantity
+              sourceField: requestedQuantity.value
+
+            - targetField: itemPackageLevelIDCode
+              operations:
+                - function:
+                    functionName: getCodemap
+                    fields: [ constant: itemPackageGS1ToTMS,
+                              field: logisticUnitName ]
+            - targetField: contentLevelTypeCode
+              operations:
+                - customFunction:
+                    functionName: get_item_level_id_code_from_wms
+                    fields: [field: global_variable.enrichment.shipment]
+            - targetField: carrierPackageType
+              sourceField: parcelPackageCode
+
+            - targetField: length
+              operations:
+                - function:
+                    functionName: getUomConversion
+                    fields: [ constant: Length,
+                              field: dimensionsOfItem.depth.measurementUnitCode, property: tms.uom.length,
+                              field: dimensionsOfItem.depth.value ]
+            - targetField: width
+              operations:
+                - function:
+                    functionName: getUomConversion
+                    fields: [ constant: Length,
+                              field: dimensionsOfItem.width.measurementUnitCode, property: tms.uom.length,
+                              field: dimensionsOfItem.width.value ]
+            - targetField: height
+              operations:
+                - function:
+                    functionName: getUomConversion
+                    fields: [ constant: Length,
+                              field: dimensionsOfItem.height.measurementUnitCode, property: tms.uom.length,
+                              field: dimensionsOfItem.height.value ]
+
+
+
+          segmentMapping:
+            - targetSegment: containerShippingInformation
+              fieldMapping:
+                - targetField: ladenLength
+                  operations:
+                    - function:
+                        functionName: getUomConversion
+                        fields: [ constant: Length,
+                                  field: totalLoadingLength.measurementUnitCode, property: tms.uom.length, field: totalLoadingLength.value ]
+                - targetField: nominalWeight
+                  operations:
+                    - customFunction:
+                        functionName: get_calculated_weight
+                        fields: [ constant: Weight,
+                                  field: transactionalTradeItem.transactionalItemData.transactionalItemWeight.measurementValue.measurementUnitCode,
+                                  property: tms.uom.weight,
+                                  field: transactionalTradeItem.transactionalItemData.transactionalItemWeight.measurementValue.value,
+                                  field: transactionalTradeItem.transactionalItemData.transactionalItemWeight.measurementValue.measurementType,
+                                  field: requestedQuantity.value,
+                                  field: global_variable.enrichment.itemMaster,
+                                  field: transactionalTradeItem.primaryId]
+                - targetField: volume
+                  operations:
+                    - customFunction:
+                        functionName: get_calculated_volume
+                        fields: [ constant: Volume,
+                                  field: totalGrossVolume.measurementUnitCode,
+                                  property: tms.uom.volume,
+                                  field: totalGrossVolume.value,
+                                  field: requestedQuantity.value,
+                                  field: unitNetVolume.measurementUnitCode,
+                                  field: unitNetVolume.value
+                        ]
+                - targetField: declaredValue
+                  sourceField: declaredValueForCustoms.value
+                - targetField: orderValue
+                  sourceField: monetaryAmountIncludingTaxes.value
+          segmentListMapping:
+            - targetSegment: weightByFreightClass
+              fieldMapping:
+                - targetField: freightClassCode
+                  operations:
+                    - customFunction:
+                        functionName: get_frieght_class_code_from_wms
+                        fields: [field: global_variable.enrichment.shipment]
+                - targetField: freightClassNominalWeight
+                  operations:
+                    - customFunction:
+                        functionName: get_calculated_weight
+                        fields: [ constant: Weight,
+                                  field: transactionalTradeItem.transactionalItemData.transactionalItemWeight.measurementValue.measurementUnitCode,
+                                  property: tms.uom.weight,
+                                  field: transactionalTradeItem.transactionalItemData.transactionalItemWeight.measurementValue.value,
+                                  field: transactionalTradeItem.transactionalItemData.transactionalItemWeight.measurementValue.measurementType,
+                                  field: requestedQuantity.value,
+                                  field: global_variable.enrichment.itemMaster,
+                                  field: transactionalTradeItem.primaryId
+                        ]
+          injectPayload:
+            - customFunction:
+                functionName: attach_container_reference_number
+                fields: [ field: lineItemNumber, field: transactionalTradeItem.primaryId,
+                          field: subLineId, field: isOrderLineAllocatable,field: tmReferenceNumber]
+
+
+

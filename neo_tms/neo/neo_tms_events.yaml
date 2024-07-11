@@ -1,0 +1,23 @@
+events:
+  active: ["apVoucher_kafka","arVoucher_kafka"]
+  inactive: []
+
+scheduler:
+  active: ["apVoucher_scheduler","arVoucher_scheduler"]
+  inactive: []
+
+jms_listener:
+  active: ["LoadTenderAcceptedListener_jms", "LoadTenderCancelledListener_jms", "ShipmentLegAddedToPlannedLoad_jms", "ShipmentLegRemovedFromLoad_jms", "dockCommitmentCreated", "dockCommitmentChanged", "dockCommitmentDeleted","LoadStopAppointmentListener_jms", "LoadTenderUpdatedListener_jms", "LoadRoutedRatedScheduledListener_jms"]
+  inactive: []
+
+file_listener:
+  active: []
+  inactive: []
+
+aeh_events:
+  active: ["aeh_tms_listener"]
+  inactive: []
+
+dms_aeh_events:  
+  active: []  
+  inactive: []
